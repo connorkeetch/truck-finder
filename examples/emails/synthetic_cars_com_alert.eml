@@ -1,0 +1,16 @@
+From: Cars.com <alerts@notifications.cars.example>
+To: you@example.com
+Subject: [SYNTHETIC TEST EMAIL] Price drop on a Rivian R1T you saved
+Date: Mon, 19 Oct 2026 08:00:00 -0600
+MIME-Version: 1.0
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>SYNTHETIC TEST EMAIL - not a real message.</p>
+<div class="card">
+  <a href="https://www.cars.com/vehicledetail/0f7c2f6a-1234-4cde-9abc-1234567890ab/?utm_campaign=pricedrop">2025 Rivian R1T Dual</a>
+  <p>Now $64,900 (was $66,400)</p>
+  <p>6,100 mi. &bull; Storm Blue &bull; Max Pack</p>
+  <p>Example Denver EV &bull; Denver, CO 80202</p>
+</div>
+</body></html>

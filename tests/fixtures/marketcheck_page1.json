@@ -1,0 +1,69 @@
+{
+ "_note": "SYNTHETIC FIXTURE modeled on MarketCheck /v2/search/car/active documented fields. Not real listings.",
+ "num_found": 2,
+ "listings": [
+  {
+   "id": "mc-abc-1",
+   "vin": "7FCTGBAL2RN900101",
+   "heading": "2024 Rivian R1T Adventure Dual-Motor AWD",
+   "price": 58990,
+   "miles": 14250,
+   "vdp_url": "https://dealer.example/inventory/7FCTGBAL2RN900101",
+   "seller_type": "dealer",
+   "exterior_color": "Launch Green",
+   "first_seen_at_date": "2026-10-01T00:00:00Z",
+   "last_seen_at_date": "2026-10-19T00:00:00Z",
+   "dealer": {
+    "name": "Example EV Dealer",
+    "city": "Draper",
+    "state": "UT",
+    "zip": "84020",
+    "latitude": "40.5046",
+    "longitude": "-111.881",
+    "phone": "(801) 555-0100",
+    "website": "exampleevdealer.example"
+   },
+   "build": {
+    "year": 2024,
+    "make": "Rivian",
+    "model": "R1T",
+    "trim": "Adventure",
+    "version": "Large Pack",
+    "drivetrain": "AWD"
+   },
+   "extra": {
+    "options": [
+     "Powered Tonneau Cover",
+     "20\" All-Terrain Wheels"
+    ],
+    "features": []
+   },
+   "carfax_clean_title": true,
+   "carfax_1_owner": true,
+   "dom": 45,
+   "first_seen_at_mc_date": "2026-09-05T08:00:00.000Z",
+   "first_seen_at_source_date": "2026-09-20T08:00:00.000Z"
+  },
+  {
+   "id": "mc-abc-2",
+   "vin": "",
+   "heading": "2023 Rivian R1T",
+   "price": 52000,
+   "miles": 33000,
+   "vdp_url": "https://private.example/listing/2",
+   "seller_type": "fsbo",
+   "dealer": {
+    "name": null,
+    "city": "Ogden",
+    "state": "UT",
+    "zip": "84401"
+   },
+   "build": {
+    "year": 2023,
+    "make": "Rivian",
+    "model": "R1T"
+   },
+   "carfax_clean_title": false
+  }
+ ]
+}

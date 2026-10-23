@@ -1,0 +1,149 @@
+SYNTHETIC TEST FIXTURE: fictional vehicle identities and listing details; no live inventory is represented.
+
+R1T Quad Large
+21,234 mi
+328 mi range
+3.0 sec
+835 hp 1
+Pickup in Salt Lake City, UT in 1-4 weeks
+0 mi away
+Year
+2023
+Generation
+Gen 1
+Condition
+Pre-owned
+VIN
+7FCTGAAA9PN900201
+Mileage
+21,234 mi
+Trim
+Adventure
+Build
+R1T Quad
+Motor
+Quad-Motor AWD
+Battery
+Large
+Exterior
+El Cap Granite
+Wheels
+21" Road Wheels
+Interior
+Black Mountain + Dark Ash Wood
+Accents & Badging
+Bright Package
+Utility
+Utility Panel
+Audio
+Rivian Elevation Audio
+Roof
+Panoramic Glass Roof
+Total
+$60,500
+Excludes est. taxes & fees
+
+Payment estimate
+These are only estimates. You'll choose your final payment method later.
+
+Est. finance
+$612
+/mo
+1
+Est. cash
+$60,500
+
+Edit your estimates
+
+Include est. taxes & fees
+Pre-owned
+Inspected for 137 details inside and out. Road tested. Qualifies for 7-day returns.
+Condition
+
+Pre-owned inspection
+Passed
+History report
+See report
+Field notes
+See list
+Warranty
+
+Comprehensive
+Apr 2028 or 60k mi
+Battery pack & drivetrain
+Apr 2031 or 175k mi
+Est. pickup
+
+1–4 weeks
+Deposit due today
+
+$250
+R1T Performance Dual Large
+27,514 mi
+307 mi range
+3.5 sec
+665 hp
+Pickup in Boise, ID in 1-4 weeks
+350 mi away
+Year
+2024
+Generation
+Gen 1
+Condition
+Pre-owned
+VIN
+7FCTGBAAXRN900202
+Mileage
+27,514 mi
+Trim
+Adventure
+Build
+R1T Dual
+Motor
+Performance Dual-Motor AWD
+Battery
+Large
+Exterior
+Glacier White
+Wheels
+20" All-Terrain Dark Wheels
+Interior
+Black Mountain + Dark Ash Wood
+Accents & Badging
+Bright Package
+All-Terrain Upgrade
+All-Terrain Package
+Utility
+Utility Panel
+Audio
+Rivian Elevation Audio
+Roof
+Panoramic Glass Roof
+Accessories
+Reinforced Underbody Shield
+Total
+$59,400
+Excludes est. taxes & fees
+
+Payment estimate
+These are only estimates. You'll choose your final payment method later.
+
+Est. finance
+$590
+/mo
+1
+Est. cash
+$59,400
+Warranty
+
+Comprehensive
+Sep 2028 or 50k mi
+Battery pack & drivetrain
+Sep 2032 or 150k mi
+Est. pickup
+
+1–4 weeks
+Deposit due today
+
+$250
+Checkout - $250 deposit

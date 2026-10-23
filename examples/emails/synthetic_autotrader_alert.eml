@@ -1,0 +1,39 @@
+From: "AutoTrader Alerts" <alerts@email.autotrader.example>
+To: you@example.com
+Subject: [SYNTHETIC TEST EMAIL] 3 new matches for your saved search: Used Rivian R1T
+Date: Mon, 19 Oct 2026 07:15:00 -0600
+MIME-Version: 1.0
+Content-Type: multipart/alternative; boundary="b1"
+
+--b1
+Content-Type: text/plain; charset=utf-8
+
+SYNTHETIC TEST EMAIL - layout imitates a saved-search alert. Not a real message.
+2024 Rivian R1T Adventure - $58,990 - 14,250 mi
+https://www.autotrader.com/cars-for-sale/vehicle/711000001
+
+--b1
+Content-Type: text/html; charset=utf-8
+
+<html><body>
+<p>SYNTHETIC TEST EMAIL - layout imitates a saved-search alert. Not a real message.</p>
+<table>
+ <tr><td>
+  <a href="https://click.email.autotrader.example/track?u=https%3A%2F%2Fwww.autotrader.com%2Fcars-for-sale%2Fvehicle%2F711000001%3Fzip%3D84020%26utm_source%3Dalert"><img src="https://img.example/1.jpg" alt="photo"></a>
+  <div><a href="https://click.email.autotrader.example/track?u=https%3A%2F%2Fwww.autotrader.com%2Fcars-for-sale%2Fvehicle%2F711000001">2024 Rivian R1T Adventure</a></div>
+  <div>$58,990</div><div>14,250 miles</div><div>Example EV Dealer &middot; Draper, UT 84020</div>
+  <div>Dual-Motor AWD &middot; Large Pack &middot; Powered tonneau cover &middot; VIN 7FCTGBAL2RN900101</div>
+ </td></tr>
+ <tr><td>
+  <a href="https://click.email.autotrader.example/track?u=https%3A%2F%2Fwww.autotrader.com%2Fcars-for-sale%2Fvehicle%2F711000002">2023 Rivian R1T Launch Edition</a>
+  <div>$55,500</div><div>31,900 miles</div><div>Example Motors &middot; Mesa, AZ 85201</div>
+  <div>Quad-Motor AWD &middot; Large Pack</div>
+ </td></tr>
+ <tr><td>
+  <a href="https://click.email.autotrader.example/track?u=https%3A%2F%2Fwww.autotrader.com%2Fcars-for-sale%2Fvehicle%2F711000003">2024 Ford F-150 Lightning XLT</a>
+  <div>$44,000</div><div>18,000 miles</div><div>Example Ford &middot; Ogden, UT 84401</div>
+ </td></tr>
+</table>
+<p><a href="https://www.autotrader.com/account/saved-searches">Manage saved searches</a> | <a href="https://click.email.autotrader.example/unsub">Unsubscribe</a></p>
+</body></html>
+--b1--

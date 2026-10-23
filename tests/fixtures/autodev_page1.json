@@ -1,0 +1,78 @@
+{
+ "_note": "SYNTHETIC FIXTURE modeled on the documented Auto.dev v2 /listings response shape. Not real listings.",
+ "total": 3,
+ "links": {
+  "self": "/listings?page=1",
+  "next": "https://api.auto.dev/listings?page=2&vehicle.make=Rivian"
+ },
+ "data": [
+  {
+   "vin": "7FCTGBAL2RN900101",
+   "createdAt": "2026-10-01 10:00:00",
+   "updatedAt": "2026-10-18 09:00:00",
+   "location": [
+    -111.881,
+    40.5046
+   ],
+   "online": true,
+   "vehicle": {
+    "year": 2024,
+    "make": "Rivian",
+    "model": "R1T",
+    "trim": "Adventure",
+    "series": "Dual-Motor AWD Large Pack",
+    "style": "Crew Cab",
+    "drivetrain": "AWD",
+    "exteriorColor": "Launch Green",
+    "interiorColor": "Black Mountain",
+    "fuel": "Electric",
+    "squishVin": "7FCTGBALRN"
+   },
+   "retailListing": {
+    "price": 58990,
+    "miles": 14250,
+    "dealer": "Example EV Dealer",
+    "city": "Draper",
+    "state": "UT",
+    "zip": "84020",
+    "used": true,
+    "cpo": false,
+    "vdp": "https://dealer.example/inventory/7FCTGBAL2RN900101",
+    "carfaxUrl": "https://www.carfax.com/VehicleHistory/p/Report.cfx?vin=7FCTGBAL2RN900101&partner=TEST",
+    "primaryImage": "https://img.example/autodev/1.jpg",
+    "photoCount": 24
+   },
+   "wholesaleListing": null,
+   "history": null
+  },
+  {
+   "vin": "7FCTGAAA7PN900102",
+   "createdAt": "2026-09-20 10:00:00",
+   "updatedAt": "2026-10-17 09:00:00",
+   "location": [
+    -116.2,
+    43.6
+   ],
+   "online": true,
+   "vehicle": {
+    "year": 2023,
+    "make": "Rivian",
+    "model": "R1T",
+    "trim": "Adventure",
+    "series": "Quad-Motor AWD",
+    "drivetrain": "AWD",
+    "exteriorColor": "Glacier White"
+   },
+   "retailListing": {
+    "price": 61500,
+    "miles": 27800,
+    "dealer": "Example Boise Motors",
+    "city": "Boise",
+    "state": "ID",
+    "zip": "83702",
+    "used": true,
+    "vdp": "https://boise.example/used/7FCTGAAA7PN900102"
+   }
+  }
+ ]
+}

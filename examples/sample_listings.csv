@@ -1,0 +1,3 @@
+url,vin,year,make,model,trim,price,miles,seller_name,seller_type,city,state,zip,exterior_color,battery,motor,tonneau,in_service_date,title_status,accident_history,transport_cost,description,source
+https://example.com/sample-listing-1,,2024,Rivian,R1T,Adventure,59990,18000,Sample Dealer (example),dealer,Draper,UT,84020,Launch Green,Large,Dual,listed_unverified,2024-03-15,clean,none_reported,0,"SAMPLE DATA. Dual-Motor AWD, Large Pack, powered tonneau cover.",dealer
+https://example.com/sample-listing-2,,2023,Rivian,R1T,Launch Edition,54500,31000,Sample Private Seller (example),private,Boise,ID,83702,Rivian Blue,Large,Quad,unknown,,,,650,"SAMPLE DATA. Quad-Motor. Tonneau cover included (type not stated).",other

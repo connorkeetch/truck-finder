@@ -1,0 +1,11 @@
+SAMPLE DATA (paste into Sources -> Assisted capture -> Paste to try the parser)
+
+2024 Rivian R1T Adventure
+$61,250
+Mileage: 12,980
+Performance Dual-Motor AWD · Large Pack · 21" Road wheels
+Options: Powered Tonneau Cover, Rivian Gear Guard
+Exterior: El Cap Granite
+In-service date: 05/02/2024
+Clean title · No accidents reported
+Sold by: Sample Motors · St George, UT 84770

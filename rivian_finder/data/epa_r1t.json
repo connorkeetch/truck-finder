@@ -1,0 +1,915 @@
+{
+ "source": "fueleconomy.gov",
+ "ratings": [
+  {
+   "year": 2022,
+   "name": "R1T",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": null,
+   "all_terrain": false,
+   "range": 314,
+   "epa_id": "44462"
+  },
+  {
+   "year": 2023,
+   "name": "R1T (20 inch wheels)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 289,
+   "epa_id": "46312"
+  },
+  {
+   "year": 2023,
+   "name": "R1T (21 inch wheels)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 328,
+   "epa_id": "46313"
+  },
+  {
+   "year": 2023,
+   "name": "R1T (22 inch wheels)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 303,
+   "epa_id": "46314"
+  },
+  {
+   "year": 2023,
+   "name": "R1T 21 inch Dual Large",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 352,
+   "epa_id": "47000"
+  },
+  {
+   "year": 2023,
+   "name": "R1T 21 inch Performance Dual Large",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 352,
+   "epa_id": "47001"
+  },
+  {
+   "year": 2023,
+   "name": "R1T 22 inch Dual Large",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 341,
+   "epa_id": "47002"
+  },
+  {
+   "year": 2023,
+   "name": "R1T 22 inch Performance Dual Large",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 341,
+   "epa_id": "47003"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Dual Large (20in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 307,
+   "epa_id": "47861"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Dual Max (20in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 355,
+   "epa_id": "47862"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Dual Standard Plus (20in)",
+   "motor": "Dual",
+   "battery": "Standard+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 277,
+   "epa_id": "47863"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Performance Dual Large (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 307,
+   "epa_id": "47864"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Performance Dual Max (20in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 355,
+   "epa_id": "47865"
+  },
+  {
+   "year": 2024,
+   "name": "R1T All-Terrain Quad Large (20in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 274,
+   "epa_id": "47866"
+  },
+  {
+   "year": 2024,
+   "name": "R1T AT Performance Dual Standard Plus (20in)",
+   "motor": "Performance Dual",
+   "battery": "Standard+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 277,
+   "epa_id": "47867"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Large (21in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 352,
+   "epa_id": "47868"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Large (22in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 341,
+   "epa_id": "47869"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Max (21in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 410,
+   "epa_id": "47870"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Max (22in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "47871"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Standard (21in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 270,
+   "epa_id": "47872"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Standard (22in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 255,
+   "epa_id": "47873"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Standard Plus (21in)",
+   "motor": "Dual",
+   "battery": "Standard+",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 315,
+   "epa_id": "47874"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Dual Standard Plus (22in)",
+   "motor": "Dual",
+   "battery": "Standard+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "47875"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Large (21in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 352,
+   "epa_id": "47876"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Large (22in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 341,
+   "epa_id": "47877"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Max (21in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 410,
+   "epa_id": "47878"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Max (22in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "47879"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Standard Plus (21in)",
+   "motor": "Performance Dual",
+   "battery": "Standard+",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 315,
+   "epa_id": "47880"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Performance Dual Standard Plus (22in)",
+   "motor": "Performance Dual",
+   "battery": "Standard+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "47881"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Quad Large (20in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 289,
+   "epa_id": "47882"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Quad Large (21in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 21,
+   "all_terrain": false,
+   "range": 328,
+   "epa_id": "47883"
+  },
+  {
+   "year": 2024,
+   "name": "R1T Quad Large (22in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 303,
+   "epa_id": "47884"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Dual Large (20in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 289,
+   "epa_id": "48752"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Dual Large Plus (20in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 292,
+   "epa_id": "48416"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Dual Max (20in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 370,
+   "epa_id": "48417"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Performance Dual Large (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 289,
+   "epa_id": "48753"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Performance Dual Large Plus (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 292,
+   "epa_id": "48418"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Performance Dual Max (20in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 370,
+   "epa_id": "48419"
+  },
+  {
+   "year": 2025,
+   "name": "R1T All-Terrain Tri Max (20in)",
+   "motor": "Tri",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 329,
+   "epa_id": "48754"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Large (20in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "48755"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Large (22in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 329,
+   "epa_id": "48756"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Large Plus (20in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 317,
+   "epa_id": "48757"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Large Plus (22in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 330,
+   "epa_id": "48420"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Max (20in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "48421"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Max (22in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 420,
+   "epa_id": "48422"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Standard (20in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 258,
+   "epa_id": "48423"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Dual Standard (22in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 270,
+   "epa_id": "48424"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Large (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "48758"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Large (22in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 329,
+   "epa_id": "48759"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Large Plus (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 317,
+   "epa_id": "48760"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Large Plus (22in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 330,
+   "epa_id": "48425"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Max (20in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "48426"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Performance Dual Max (22in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 420,
+   "epa_id": "48427"
+  },
+  {
+   "year": 2025,
+   "name": "R1T Tri Max (22in)",
+   "motor": "Tri",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 371,
+   "epa_id": "48761"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Dual Large (20in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 289,
+   "epa_id": "49709"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Dual Large Plus (20in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 292,
+   "epa_id": "49700"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Dual Max (20in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 370,
+   "epa_id": "49695"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Performance Dual Large (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 289,
+   "epa_id": "49712"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Performance Dual Large Plus (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 292,
+   "epa_id": "49702"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Performance Dual Max (20in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 370,
+   "epa_id": "49698"
+  },
+  {
+   "year": 2026,
+   "name": "R1T All-Terrain Tri Max (20in)",
+   "motor": "Tri",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 329,
+   "epa_id": "49706"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Large (20in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "49708"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Large (22in)",
+   "motor": "Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 329,
+   "epa_id": "49707"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Large Plus (20in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 317,
+   "epa_id": "49703"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Large Plus (22in)",
+   "motor": "Dual",
+   "battery": "Large+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 330,
+   "epa_id": "49699"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Max (20in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "49693"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Max (22in)",
+   "motor": "Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 420,
+   "epa_id": "49694"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Standard (20in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 258,
+   "epa_id": "49692"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Dual Standard (22in)",
+   "motor": "Dual",
+   "battery": "Standard",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 270,
+   "epa_id": "49691"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Large (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "49711"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Large (22in)",
+   "motor": "Performance Dual",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 329,
+   "epa_id": "49710"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Large Plus (20in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 317,
+   "epa_id": "49704"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Large Plus (22in)",
+   "motor": "Performance Dual",
+   "battery": "Large+",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 330,
+   "epa_id": "49701"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Max (20in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "49696"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Performance Dual Max (22in)",
+   "motor": "Performance Dual",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 420,
+   "epa_id": "49697"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Quad Max (20in AT)",
+   "motor": "Quad",
+   "battery": "Max",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 325,
+   "epa_id": "49714"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Quad Max (22in UHP)",
+   "motor": "Quad",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 338,
+   "epa_id": "49713"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Quad Max (22in)",
+   "motor": "Quad",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 374,
+   "epa_id": "49715"
+  },
+  {
+   "year": 2026,
+   "name": "R1T Tri Max (22in)",
+   "motor": "Tri",
+   "battery": "Max",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 371,
+   "epa_id": "49705"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Performance (20in AT)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 329,
+   "epa_id": "50677"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Performance (20in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 348,
+   "epa_id": "50678"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Performance (22in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 371,
+   "epa_id": "50679"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium (20in AT)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 289,
+   "epa_id": "50680"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium (20in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 300,
+   "epa_id": "50681"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium (22in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 329,
+   "epa_id": "50682"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium Long Range (20in AT)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 370,
+   "epa_id": "50683"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium Long Range (20in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": false,
+   "range": 380,
+   "epa_id": "50684"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Premium Long Range (22in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 420,
+   "epa_id": "50685"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Quad (20in AT)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 20,
+   "all_terrain": true,
+   "range": 325,
+   "epa_id": "50686"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Quad (22in UHP)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 338,
+   "epa_id": "50687"
+  },
+  {
+   "year": 2027,
+   "name": "R1T Quad (22in)",
+   "motor": "Quad",
+   "battery": "Large",
+   "wheels": 22,
+   "all_terrain": false,
+   "range": 374,
+   "epa_id": "50688"
+  }
+ ]
+}

@@ -1,0 +1,16 @@
+{
+  "listings": [
+    {
+      "url": "https://example.com/sample-listing-3",
+      "year": 2025,
+      "trim": "Dual",
+      "price": "$63,900",
+      "mileage": "7,400",
+      "seller": "Sample EV Dealer (example)",
+      "city": "Las Vegas",
+      "state": "NV",
+      "zip": "89101",
+      "description": "SAMPLE DATA. 2025 Rivian R1T Dual-Motor Max Pack in Storm Blue. No tonneau cover. Clean title."
+    }
+  ]
+}

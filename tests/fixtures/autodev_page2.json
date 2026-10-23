@@ -1,0 +1,64 @@
+{
+ "_note": "SYNTHETIC FIXTURE modeled on the documented Auto.dev v2 /listings response shape. Not real listings.",
+ "total": 3,
+ "links": {
+  "self": "/listings?page=2",
+  "next": null
+ },
+ "data": [
+  {
+   "vin": "7FCTHBAA4SN900103",
+   "location": [
+    -104.99,
+    39.74
+   ],
+   "online": true,
+   "vehicle": {
+    "year": 2025,
+    "make": "Rivian",
+    "model": "R1T",
+    "trim": "Dual",
+    "series": "Dual-Motor Max Pack",
+    "exteriorColor": "Storm Blue"
+   },
+   "retailListing": {
+    "price": 64900,
+    "miles": 6100,
+    "dealer": "Example Denver EV",
+    "city": "Denver",
+    "state": "CO",
+    "zip": "80202",
+    "used": true,
+    "vdp": "https://denver.example/r1t/7FCTHBAA4SN900103"
+   }
+  },
+  {
+   "vin": "7FCTGBAL9TN900104",
+   "vehicle": {
+    "year": 2026,
+    "make": "Rivian",
+    "model": "R1T"
+   },
+   "retailListing": {
+    "price": 75000,
+    "miles": 5,
+    "dealer": "Somebody",
+    "state": "CA",
+    "used": false,
+    "vdp": "https://new.example/x"
+   }
+  },
+  {
+   "vin": "7FCTGBALXRN900105",
+   "vehicle": {
+    "year": 2024,
+    "make": "Rivian",
+    "model": "R1T"
+   },
+   "retailListing": null,
+   "wholesaleListing": {
+    "buyNowPrice": 50000
+   }
+  }
+ ]
+}

@@ -1,0 +1,12 @@
+SYNTHETIC TEST EMAIL (plain text, as pasted) - imitates a KSL saved-search alert. Not a real message.
+
+New listings matching "Rivian R1T":
+
+2023 Rivian R1T Adventure
+$52,000 | 33,000 miles | Ogden, UT
+Quad-Motor, powered tonneau, clean title
+https://cars.ksl.com/listing/9900001
+
+2024 Rivian R1T Adventure
+$59,500 | 12,400 miles | Lehi, UT
+https://cars.ksl.com/listing/9900002

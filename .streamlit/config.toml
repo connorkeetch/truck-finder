@@ -1,0 +1,34 @@
+[server]
+address = "127.0.0.1"
+port = 8501
+headless = false
+runOnSave = false
+enableStaticServing = true          # truck thumbnails are served from static/photos so the browser can cache them
+
+[browser]
+gatherUsageStats = false
+serverAddress = "127.0.0.1"
+
+[logger]
+level = "warning"
+
+# Charcoal dark theme. Streamlit's ⋮ menu → Settings can still switch to Light if you ever want it.
+[theme]
+base = "dark"
+primaryColor = "#F5A623"            # Rivian-ish amber for buttons and highlights
+backgroundColor = "#1C1D21"            # charcoal
+secondaryBackgroundColor = "#26282D"
+textColor = "#E8E8E8"
+linkColor = "#F5B94A"
+borderColor = "#35373D"
+dataframeBorderColor = "#303238"
+dataframeHeaderBackgroundColor = "#222327"
+dataframeHeaderTextColor = "#BDBDBD"
+showWidgetBorder = true
+baseRadius = "medium"
+chartCategoricalColors = ["#F5A623", "#4FA3F7", "#7BD389", "#E86A92", "#B39DDB", "#4DD0E1", "#FFD54F"]
+
+[theme.sidebar]
+backgroundColor = "#17181B"
+secondaryBackgroundColor = "#222327"
+borderColor = "#2C2E33"
