@@ -7,6 +7,9 @@ work without an API account.
 
 Source: [connorkeetch/truck-finder](https://github.com/connorkeetch/truck-finder) · [MIT license](LICENSE).
 
+**New here?** The [Quickstart](docs/QUICKSTART.md) gets you running with demo data in about five minutes.
+Every guide is listed in [docs/README.md](docs/README.md).
+
 The app runs on your computer using Streamlit and SQLite. Automatic collection uses authorized APIs;
 retail sites are covered through listings supplied by those APIs or information you choose to import.
 
@@ -29,7 +32,7 @@ Optional desktop launchers: `scripts/create_desktop_shortcut.ps1` for Windows an
 ## Choose how to collect listings
 
 - **Try it without credentials:** enable the clearly labeled synthetic demo connector, or add listings by
-  hand, CSV/JSON, pasted text, or saved-search email.
+  hand, CSV/JSON, pasted text, or saved-search email ([Importing listings](docs/IMPORTING.md)).
 - **Auto.dev or MarketCheck:** add your own key under **Settings → API credentials**, or copy `.env.example`
   to `.env`. Keys use the OS credential store or environment, rather than the inventory database.
 - **Refresh:** press **Run Search**, select brands or **All brands**, then press **Start search**. Opening or
@@ -115,5 +118,16 @@ stubbed providers, so they do not require inventory API credentials.
 `extension/` contains the optional browser capture extension; `tests/` contains the test suite.
 The internal package and environment names retain `rivian_finder` for compatibility.
 
-More: [User guide](docs/USER_GUIDE.md) · [Troubleshooting](docs/TROUBLESHOOTING.md) ·
-[Source coverage](docs/SOURCES.md) · [Public release preparation](docs/PUBLIC_RELEASE.md)
+Want to help? Read [Contributing](CONTRIBUTING.md) for setup and ground rules,
+[How Truck Finder works](docs/ARCHITECTURE.md) for the code layout, and [Improvements](docs/IMPROVEMENTS.md)
+for known issues and good first tasks. Report security problems privately as described in
+[SECURITY.md](SECURITY.md).
+
+## Documentation
+
+- [Quickstart](docs/QUICKSTART.md) · [User guide](docs/USER_GUIDE.md) · [Importing listings](docs/IMPORTING.md)
+- [Sources](docs/SOURCES.md) · [Configuration](docs/CONFIGURATION.md) ·
+  [Automation and command line](docs/AUTOMATION.md) · [Private Railway deployment](docs/CLOUD_DEPLOYMENT.md)
+- [Troubleshooting](docs/TROUBLESHOOTING.md) · [Security](SECURITY.md)
+- For contributors: [Contributing](CONTRIBUTING.md) · [How Truck Finder works](docs/ARCHITECTURE.md) ·
+  [Improvements](docs/IMPROVEMENTS.md) · [Release checks](docs/PUBLIC_RELEASE.md)
