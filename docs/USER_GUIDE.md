@@ -7,8 +7,8 @@ Model-specific Rivian and EV tools below apply only where that evidence is avail
 
 ## A typical shopping session
 
-Almost everything happens on **Inventory** (the first page); **Dashboard** is the summary. The other pages are
-under **More** in the sidebar and you rarely need them.
+Browse on **Inventory**, work through favorites in **My shortlist**, and see the summary on **Dashboard**.
+The other pages are under **More** in the sidebar.
 
 1. **Run Search** (sidebar) opens a picker for the brands in your saved make/model searches.
    Choose any combination, or **All brands**, then **Start search**.
@@ -27,15 +27,57 @@ under **More** in the sidebar and you rarely need them.
    trucks to compare them or hide them together.
 4. **Prepare Excel export** (sidebar) when you want to compare in a spreadsheet or share.
 
+## Updated since last refresh
+
+Inventory and Dashboard show changes found in the latest **Run Search**, plus updates recorded afterward.
+Reloading the browser or reopening the app keeps this history visible; the next completed search starts a new
+refresh summary.
+
+- **New listings** includes newly discovered vehicles and new source listings for vehicles already tracked.
+- **Price changes** shows the old price, new price, and the exact dollar increase or decrease for that listing.
+- **Sold or removed** shows provider-reported removals and listings you marked sold or removed.
+- **Not seen** means a listing was absent from a complete scan. It does not confirm a sale, and another source
+  may still have an active listing for the same vehicle.
+
+This section includes changes outside your normal inventory filters so a price increase or removal cannot hide
+itself. Source links and current listing status identify which listing changed. The first search establishes a
+baseline: “new” means first discovered by this app, rather than newly advertised by the seller. Incomplete or
+failed searches are labeled and never establish that unseen listings were sold.
+
 ## Dashboard
 
 * **Matching vehicles** — active trucks passing your current filters.
 * **New / Price drops (7 days)** — among matching trucks.
 * **Missing from last scan** — not observed in the last *complete* scan of that source. Not proof of sale.
-* **Top matches** — ranked by *fit score* (0–100): tonneau 25 · battery 15 · price 15 · warranty 12 ·
-  miles 10 · location 10 · motor 8 · history (clean title +3, no accidents +2, branded −25, accident −10).
-  Unknown values get neutral credit, never optimistic credit. Hover the Fit metric on a vehicle page to see
-  its breakdown.
+* **Top matches** — requirements first, then personal score (0–100). The score uses your saved preferences and
+  room under your budget, mileage and distance limits; it does not reward a particular brand's battery or motor names.
+
+## My shortlist and requirements
+
+Star vehicles in Inventory to add them to **My shortlist**. Active listings appear first. This page keeps favorites visible even when normal
+inventory filters would hide them; trucks marked Not interested are excluded. The listing's
+current status stays visible, including missing or removed listings.
+
+Open **My shopping profile** to set minimum range and towing capacity and choose required or preferred
+equipment. No comfort features are selected for you. Budget, mileage and distance use your saved default filters.
+Choose **Required**, **Prefer**, or **Ignore** for numeric targets; a feature cannot be both required and preferred.
+
+- **Meets requirements** means the saved required checks pass. It does not certify the truck's overall condition.
+- **Needs verification** means required information is unknown, conflicting, or only advertised.
+- **Does not qualify** means a saved limit or verified requirement fails.
+
+Personal score helps rank candidates within those groups. Preferred features affect the score, not eligibility.
+The legacy **Fit score** sort remains available separately. Inventory's **My requirements** filter lets you choose
+which groups to view; leaving it empty keeps all groups. The same saved filter applies to Dashboard and exports.
+
+Each favorite shows what needs proof, saved evidence, and a seller request you can copy. Record equipment as
+**Advertised yes/no** when a listing or seller claims it, and **Verified yes/no** when you have checked supporting
+evidence. Verified entries survive refreshes. Choosing **Unknown** clears your verification; historical source
+claims remain available. Verify numeric range/towing values in the vehicle's **Verify equipment** tab.
+
+**Open details → Checklist & contacts** exposes the existing inspection checklist and seller-contact/follow-up
+tools. Seller requests are prepared locally for you to copy; the app does not send them. Updating requirements,
+recording proof, and viewing favorites do not spend listing API calls.
 
 ## Where is it actually for sale?
 
@@ -92,6 +134,16 @@ that truck, so the next search can't put the wrong one back. Removing it brings 
   first-seen date, or when Truck Finder first saw it — hover for which). *Price drops* counts cuts Truck Finder
   has observed. *Leverage* is a rule of thumb: High = listed 60+ days or 2+ cuts; Medium = 30+ days or 1 cut.
   The dealer's phone appears when MarketCheck supplies it.
+* **Vehicle details → Price history → Price-drop patterns** shows the selected listing's average reduction,
+  cumulative reductions, net price change, and observed time between cuts. The average amount is calculated per
+  cut; increases can make the net change smaller than cumulative reductions. One listing timeline per vehicle is
+  selected, so provider mirrors are not added together and differences between sources are not counted as cuts.
+  Its source, observation window and recorded availability are shown beside the results.
+  Rivian vehicles also show a benchmark for saved listings attributed to Rivian itself, with the number of cuts,
+  trucks and intervals behind the averages. Unknown timing stays unknown when fewer than two cuts are recorded.
+  A single observed interval is labeled as insufficient to establish a typical schedule. These are detection
+  times from saved observations, rather than confirmed dealer change dates, and opening the page spends no
+  listing API calls. Normal Inventory filters do not change this historical benchmark.
 * **History & recalls** tab: the dealer's free Carfax link when Auto.dev provides one (check title, accidents,
   owners, and the first-sold date — that's the warranty in-service date), MarketCheck's Carfax clean-title /
   one-owner flags, and NHTSA recalls for the model year (refreshed weekly during Run Search; *Refresh recalls* forces
@@ -184,8 +236,14 @@ Offers match the vehicle's seller name. Payoff, tax rate, fees and tax treatment
   adds or updates each truck by VIN: price, miles, pickup location, colors, wheels, EPA range, and — as verified
   values — battery, motor, powered tonneau (Yes only if Rivian's build list shows *Powered Tonneau Cover*) and the
   exact warranty dates and mileage caps.
-* **Filters** (expander): price, mileage, years, distance, generation, battery, motor, tonneau status, states,
-  branded titles, accidents, missing/removed, demo data, plus:
+* **Filters** (expander): price, mileage, years, distance, deal rating, seller type, generation, battery, motor,
+  tonneau status, states, branded titles, accidents, missing/removed, demo data, plus:
+  * **Deal rating**: choose any combination of Great deal, Good deal, Fair price, Above market, Overpriced,
+    Check title, or the separate Not rated categories. Accident warnings remain on the listing; selecting Good
+    deal also includes Good deal listings labeled with an accident warning unless you hide reported accidents.
+  * **Seller type**: show dealers, private sellers, manufacturers, retailers, or unknown sellers.
+  * **Only listings with price drops**: show listings with at least one recorded price reduction. This uses
+    saved history and does not start a new search.
   * **Include near misses** (on): also shows trucks up to 5 % over your max price or 10 % over your max miles,
     marked **⚠** after the truck's name; the reason is at the top of its details. Nothing else is relaxed.
   * **Use my price after discounts** (on): the price filter uses *Your price* — e.g. Carvana's $1,000 trade-in
@@ -194,6 +252,11 @@ Offers match the vehicle's seller name. Payoff, tax rate, fees and tax treatment
   * *Save as my default filters* stores them.
 * Unknown values are **not** hidden by numeric filters, and a truck whose sources disagree on battery or motor is
   kept if *any* claimed value matches — you never miss a truck because a field was missing or mislabeled.
+* **Sort by** applies to both Cards and Table. In addition to fit, adjusted price and existing sorts, choose deal
+  rating, price/mileage/distance in either direction, monthly payment, range, towing capacity, model year,
+  dollar savings versus market, or the most recent price change. Missing values stay at the end. **Best deal**
+  puts ordinary deal ratings ahead of unrated listings and title warnings, then compares the percentage versus
+  market within each rating. Price-change recency includes both increases and decreases.
 * **Click a truck's name** (next to the photo; ★ marks favorites) to open its full details in a pop-up —
   everything from the Vehicle details page, with **★ Favorite** and **🚫 Not interested…** at the top and
   *Quick verify* below. (Streamlit tables can't react to clicks on a picture, so the name is the click target.)

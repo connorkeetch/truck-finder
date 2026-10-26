@@ -43,9 +43,11 @@ See [Sources](docs/SOURCES.md) and the providers' current plans:
 ## What you can customize
 
 - Make/model searches and the brands refreshed in each run.
-- Price, mileage, model years, distance, trims, and available equipment filters.
+- Price, mileage, model years, distance, trims, deal ratings, seller type, and recorded price-drop filters.
+- Sorting by deal rating, savings versus market, monthly payment, range, towing capacity, and price-change recency.
 - Loan terms, APR scenarios, tax treatment, trade-in/payoff values, fees, and transport estimates.
 - Optional feature-value adjustments, notes, favorites, and hidden listings.
+- Personal must-haves and preferences, with a proof queue for favorite vehicles and a personal-match sort/filter.
 
 Fresh finance figures are editable examples, with tax, trade-in, fees, and discounts initially zero. Enter your
 own figures before using payment estimates. Range/warranty price adjustments and the EV fly-and-drive calculator
@@ -57,11 +59,21 @@ Listings are deduplicated by validated VIN. Each source link and price/mileage o
 can compare changes over time. An incomplete or failed scan never marks unseen inventory as missing.
 **Missing** means not observed in a complete scan; **removed** requires provider evidence or your action.
 
+**Vehicle details → Price history** shows observed cut amounts and gaps between cuts, with sample sizes and
+source dates. Rivian details also show the saved Rivian-seller benchmark. The calculations use recorded
+observations without additional API calls; a short history is not a prediction of the next reduction.
+
+The **Updated since last refresh** section on Inventory and Dashboard groups new listings, exact price changes,
+reported removals, and unconfirmed missing listings. It persists across browser reloads and app restarts.
+
 Equipment claims retain their source, confidence, and evidence. Unknown range, towing capacity, and warranty
 details stay unknown until evidence is supplied. The app does not replace an individual vehicle's towing rating
 with a model's advertised maximum.
 
 The inventory offers cards, tables, comparisons, financing scenarios, notes, favorites, and Excel/CSV export.
+**My shortlist** keeps your favorites together with equipment evidence, copyable seller questions, and the
+checklist/contact tools. Required equipment stays **Needs verification** until you confirm it; advertised claims
+do not count as verified equipment. Saving requirements or viewing this page does not use listing API calls.
 Optional scheduled runs and desktop alerts are available; they are off by default.
 
 ### Model-specific features
@@ -83,6 +95,10 @@ their own terms; each user supplies their own provider account and credentials.
 
 Access defaults to [localhost](http://127.0.0.1:8501). Optional PIN-protected phone access is available on your
 home network. Database backups and JSON import/export are available in Settings.
+
+For access away from home, see [Private Railway deployment](docs/CLOUD_DEPLOYMENT.md). The included image
+protects the app with a private login and uses a persistent volume. Phone layouts include stacked inventory
+cards, larger controls, and a compact comparison option.
 
 ## Development and tests
 

@@ -1,0 +1,25 @@
+{
+	auto_https off
+	admin off
+}
+
+:{$PORT:8080} {
+	@health {
+		path /_stcore/health
+		method GET HEAD
+	}
+	handle @health {
+		reverse_proxy 127.0.0.1:8501
+	}
+
+	handle {
+		basic_auth {
+			{env.TRUCK_FINDER_USER} {env.TRUCK_FINDER_PASSWORD_HASH}
+		}
+		reverse_proxy 127.0.0.1:8501 {
+			header_up -Authorization
+			header_up X-Truck-Finder-User {http.auth.user.id}
+			header_up X-Truck-Finder-Token {env.TRUCK_FINDER_PROXY_SECRET}
+		}
+	}
+}

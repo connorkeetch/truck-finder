@@ -8,13 +8,14 @@ import pandas as pd
 import streamlit as st
 
 from .. import compare, queries
-from . import common
+from . import common, refresh_changes
 
 
 def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Dashboard")
+    refresh_changes.render(c, s)
 
     inv = common.inventory(s)
     if inv.empty:
@@ -58,11 +59,11 @@ def render() -> None:
         with h2:
             size = common.photo_size_control("dash_photo_size")
         row_h = common.PHOTO_SIZES[size]
-        top = matching.head(10)
+        top = queries.sort_inventory(matching, "Personal match").head(10)
         if top.empty:
             st.write("Nothing matches your filters. Loosen them on the Inventory page.")
         else:
-            show = common.add_photo_column(top)[["photo", "sold_by", "location", "fit_score", "year", "make", "model", "trim", "price",
+            show = common.add_photo_column(top)[["photo", "sold_by", "location", "match_status", "match_score", "year", "make", "model", "trim", "price",
                                                  "deal_label", "miles", "battery", "motor", "tonneau", "warranty",
                                                  "distance_mi", "est_monthly", "seller_url", "found_on", "favorite",
                                                  "hidden", "vehicle_id"]].copy()
@@ -74,7 +75,8 @@ def render() -> None:
                     "photo": st.column_config.ImageColumn("Photo", width=int(row_h * 4 / 3)),
                     "sold_by": st.column_config.TextColumn("Sold by", width="medium"),
                     "favorite": None, "hidden": None,
-                    "fit_score": st.column_config.ProgressColumn("Fit", min_value=0, max_value=100, format="%d"),
+                    "match_status": st.column_config.TextColumn("My requirements", width="medium"),
+                    "match_score": st.column_config.ProgressColumn("Personal score", min_value=0, max_value=100, format="%d"),
                     "year": st.column_config.NumberColumn("Year", format="%d"),
                     "price": st.column_config.NumberColumn("Price", format="dollar", step=1),
                     "miles": st.column_config.NumberColumn("Miles", format="%,d"),
@@ -89,7 +91,7 @@ def render() -> None:
             selected = show.iloc[ev.selection.rows] if ev.selection.rows else show.iloc[0:0]
             common.selection_actions(c, selected, "dash_top")
             st.caption("Tick a row's checkbox → open, compare, favorite or hide it from the top of the left sidebar. "
-                       "Fit score weights tonneau, battery, warranty, price, miles, location and history.")
+                       "Top matches put requirements first, then your saved preferences and room under your budget, mileage and distance limits.")
         st.subheader("Recent changes")
         if ev7.empty:
             st.write("No changes in the last 7 days.")

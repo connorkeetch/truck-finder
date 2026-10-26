@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
 
 from . import attributes, backup, credentials, enrich, photos, pipeline, queries, recalls
 from .extract import identify_site
@@ -14,6 +15,7 @@ from .sources.demo import DemoAdapter
 from .sources.marketcheck import MarketCheckAdapter
 
 API_SOURCES = ("autodev", "marketcheck")
+SEARCH_LOCK = threading.RLock()
 
 
 def source_enabled(conn: sqlite3.Connection, key: str) -> bool:
@@ -45,6 +47,12 @@ def available_sources(conn: sqlite3.Connection) -> list[dict]:
 def run_sources(conn: sqlite3.Connection, keys: list[str] | None = None, settings: dict | None = None,
                 brands: list[str] | None = None) -> dict:
     """Run the requested connectors (default: every enabled and configured one)."""
+    with SEARCH_LOCK:
+        return _run_sources(conn, keys, settings, brands)
+
+
+def _run_sources(conn: sqlite3.Connection, keys: list[str] | None = None, settings: dict | None = None,
+                 brands: list[str] | None = None) -> dict:
     settings = settings or load_settings(conn)
     try:
         names = {brand.casefold(): brand for brand in configured_brands(settings["collection"])}

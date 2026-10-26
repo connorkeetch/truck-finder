@@ -1,0 +1,15 @@
+**
+!Dockerfile
+!requirements.txt
+!app.py
+!Caddyfile
+!docker-entrypoint.sh
+!rivian_finder/
+!rivian_finder/**
+!.streamlit/
+!.streamlit/config.toml
+**/__pycache__/
+**/*.pyc
+**/*.db
+**/*.db-wal
+**/*.db-shm

@@ -39,13 +39,17 @@ def render_compare(inv, chosen: list[int], on_details=None) -> None:
     """Side-by-side table for the chosen trucks (used by this page and the Inventory pop-up).
     `on_details(vehicle_id)` replaces the default 'go to Vehicle details page' for the Details buttons."""
     trucks = inv.set_index("vehicle_id").loc[chosen].reset_index()
-    table, best = compare.build(trucks)
+    compact = st.toggle("Compact comparison", False, key="compare_compact",
+                         help="A shorter comparison for phone screens. Turn off for every field and full-size photos.")
+    essentials = {"My requirements", "Personal score", "Price", "Est. monthly", "Mileage", "EPA range", "Tow capacity",
+                  "Tow confidence", "Warranty left", "Title", "Accidents", "Distance from home", "Total acquisition cost"}
+    table, best = compare.build(trucks, rows=[row for row in compare.ROWS if row[0] in essentials] if compact else None)
 
     cols = st.columns(len(chosen))
     for col, name, (_, t) in zip(cols, table.columns, trucks.iterrows()):
         with col.container(border=True):
             src = common.photo_image(t["vehicle_id"], t["photo_url"])
-            if src:
+            if src and not compact:
                 st.image(src, width="stretch")
             st.markdown(f"**{name}**" + ("  \n<span class='rf-badge rf-demo'>DEMO</span>" if t["is_demo"] else ""),
                         unsafe_allow_html=True)
@@ -61,10 +65,14 @@ def render_compare(inv, chosen: list[int], on_details=None) -> None:
     styles = best.map(lambda b: BEST_STYLE if b else "")
     st.dataframe(table.style.apply(lambda _: styles, axis=None), height=35 * (len(table) + 1) + 3,
                  column_config={"_index": st.column_config.TextColumn("", width="medium")})
-    st.caption("Green = best among these trucks for that row (lowest price/miles/cost/distance/recalls; highest fit, "
+    st.caption("Green = best among these trucks for that row (lowest price/miles/cost/distance/recalls; highest "
                "battery, warranty, range, tow capacity; confirmed tonneau, clean title, no accidents). Unknown values are never "
                "highlighted.")
-    payments_section(trucks)
+    if compact:
+        with st.expander("Payment scenarios"):
+            payments_section(trucks)
+    else:
+        payments_section(trucks)
 
 
 def _signed(v: float) -> str:

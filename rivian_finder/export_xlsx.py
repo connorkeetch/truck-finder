@@ -84,6 +84,9 @@ def build_workbook(conn: sqlite3.Connection, settings: dict) -> Workbook:
     ws = wb.active
     ws.title = "Current Inventory"
     cur_cols = {
+        "match_status": "My Requirements", "match_score": "Personal Score",
+        "match_failures": "Requirements Not Met", "match_missing": "Needs Proof",
+        "match_reasons": "Match Details", "match_preferred": "Preferences",
         "fit_score": "Fit Score", "favorite": "Favorite", "year": "Year", "make": "Brand", "model": "Model",
         "trim": "Trim", "generation": "Generation", "price": "Price", "your_price": "Your Price (after discounts)",
         "adjusted_price": "Adjusted Price (your values)", "adjust_note": "Adjustments", "miles": "Mileage",
@@ -111,6 +114,8 @@ def build_workbook(conn: sqlite3.Connection, settings: dict) -> Workbook:
         inv = inv.assign(link_label=inv["link_result"].map(linkcheck.label), warranty_ends=[warranty.ends_text(e, m) for e, m in zip(inv["warranty_expires"],
                                                                                   inv["warranty_miles_limit"])])
     cur = inv[list(cur_cols)].rename(columns=cur_cols) if not inv.empty else pd.DataFrame(columns=list(cur_cols.values()))
+    for col in ("Requirements Not Met", "Needs Proof", "Match Details", "Preferences"):
+        cur[col] = cur[col].map(lambda items: " · ".join(items))
     _write_table(ws, cur, "CurrentInventory",
                  money=("Price", "Your Price (after discounts)", "Adjusted Price (your values)", "Price Change Since First Seen", "Approx. Total Acquisition Cost",
                         "Cash Needed for Target Payment", "Total Dropped", "Market Estimate", "vs Market ($)",

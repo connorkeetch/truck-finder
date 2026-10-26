@@ -198,8 +198,9 @@ class Ingestor:
                  nl.listed_at, nl.days_on_market, nl.photo_url, nl.photo_count, nl.days_on_market_here),
             )
             listing_id = cur.lastrowid
-            kind = "new_listing" if (created_vehicle or had_listings == 0) else "new_source_for_vin"
-            self._event(listing_id, vehicle_id, kind, None, nl.price)
+            kind = ("provider_removed" if nl.removed_at else
+                    "new_listing" if (created_vehicle or had_listings == 0) else "new_source_for_vin")
+            self._event(listing_id, vehicle_id, kind, None, nl.removed_at if nl.removed_at else nl.price)
             events.append(kind)
 
         conn.execute(

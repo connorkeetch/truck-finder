@@ -6,7 +6,7 @@ import json
 import pandas as pd
 import streamlit as st
 
-from .. import config, dedup, pipeline, queries, services
+from .. import cloud, config, dedup, pipeline, queries, services
 from ..db import utcnow
 from ..extract import extract_attributes, parse_location
 from ..importers import capture, email_alerts, manual
@@ -125,25 +125,33 @@ def render() -> None:
             "**Assisted capture** = you open the listing in your normal browser, *you* select or copy the details, "
             "and the app parses only that text for your review. It never navigates, paginates, or fetches pages.  \n"
             "This is different from **browser automation** (not used) and **manual entry** (typing it yourself).")
-        srv = common.capture_server()
+        srv = None if cloud.is_cloud() else common.capture_server()
         sub = st.tabs(["Paste from a listing", "Browser extension queue"])
         with sub[0]:
             add_truck.paste_block("src")
         with sub[1]:
-            if srv:
+            if cloud.is_cloud():
+                st.info("The browser extension sends captures only to an app running on your own computer. "
+                        "For this hosted app, use Copy for pasting in the extension, then Paste from a listing. "
+                        "Any saved captures below can still be reviewed.")
+            elif srv:
                 st.success(f"Receiver running on http://{config.CAPTURE_HOST}:{srv.port} (local only).")
             else:
                 st.warning(f"Capture receiver could not start on port {config.CAPTURE_PORT} (in use?). "
                            "Set RIVIAN_FINDER_CAPTURE_PORT in .env, or use paste instead.")
-            with st.expander("Install the browser extension (Chrome / Edge / Brave)"):
-                st.markdown(
-                    f"1. Open `chrome://extensions` and switch on **Developer mode**.\n"
-                    f"2. Click **Load unpacked** and choose the folder `{config.PROJECT_ROOT / 'extension'}`.\n"
-                    "3. On a listing page, **highlight the details you want** (price, mileage, VIN, options), "
-                    "click the extension icon, then **Send selection**.\n\n"
-                    "Permissions: `activeTab` + `scripting` (only after you click), and access to "
-                    "`127.0.0.1:8765` to deliver the capture. Nothing else, no background activity. "
-                    "It refuses to run on Facebook.")
+            with st.expander("Install the browser extension (Chrome / Edge / Brave)", expanded=False):
+                if cloud.is_cloud():
+                    st.write("Install the extension from your local project folder if you want its Copy for pasting "
+                             "button. Send selection requires a local app; it cannot send to the hosted URL.")
+                else:
+                    st.markdown(
+                        f"1. Open `chrome://extensions` and switch on **Developer mode**.\n"
+                        f"2. Click **Load unpacked** and choose the folder `{config.PROJECT_ROOT / 'extension'}`.\n"
+                        "3. On a listing page, **highlight the details you want** (price, mileage, VIN, options), "
+                        "click the extension icon, then **Send selection**.\n\n"
+                        "Permissions: `activeTab` + `scripting` (only after you click), and access to "
+                        "`127.0.0.1:8765` to deliver the capture. Nothing else, no background activity. "
+                        "It refuses to run on Facebook.")
             queue = capture.pending(c)
             if not queue:
                 st.write("No pending captures.")

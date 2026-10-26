@@ -13,8 +13,16 @@ MIN_TRAINING = 20
 SUSPICIOUS_PCT = -0.15     # this far under market has meant branded/rebuilt titles in practice
 RIDGE = 1.0
 BANDS = [(-0.08, "Great deal"), (-0.03, "Good deal"), (0.03, "Fair price"), (0.08, "Above market")]
+DEAL_TYPES = ("Great deal", "Good deal", "Fair price", "Above market", "Overpriced", "⚠ Check title",
+              "Not rated", "Not rated (branded title)")
 BATTERY_LEVELS = ["Max", "Large", "Standard+", "Standard"]          # baseline: Unknown
 MOTOR_LEVELS = ["Quad", "Tri", "Performance Dual", "Dual"]          # baseline: Unknown
+
+
+def deal_type(label: str | None) -> str:
+    """Keep rating categories separate from the accident warning added to their labels."""
+    label = label.removesuffix(" (accident reported)") if isinstance(label, str) else "Not rated"
+    return label if label in DEAL_TYPES else "Not rated"
 
 
 def label_for(pct: float | None) -> str:
@@ -94,6 +102,7 @@ def annotate(df: pd.DataFrame) -> pd.DataFrame:
     out["deal_note"] = ""
     if out.empty:
         return out
+    out.loc[out["title_status"].eq("branded"), "deal_label"] = "Not rated (branded title)"
     train = _training_mask(out)
     years = sorted(int(y) for y in out.loc[train, "year"].dropna().unique())
     n = int(train.sum())

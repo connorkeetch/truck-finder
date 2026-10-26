@@ -7,7 +7,7 @@ from collections import defaultdict
 
 import pandas as pd
 
-from . import adjust, checklist, deals, epa, finance, flips, linkcheck, links, negotiation, photos, recalls, shipping, subframe, warranty
+from . import adjust, checklist, deals, epa, finance, flips, linkcheck, links, matching, negotiation, photos, recalls, shipping, subframe, warranty
 from .attributes import resolve_many
 from .config import ACCIDENT_STATUSES, TITLE_STATUSES, TONNEAU_STATUSES
 from .geo import distance_from_zip
@@ -16,6 +16,31 @@ from .sources.base import EV_TRUCK_PRESET, matches_target
 from .trims import excluded_trim, standard_range, trim_label
 
 CONF_LABEL = {"verified": "verified", "high": "high", "medium": "med", "low": "low", "": ""}
+SELLER_TYPES = ("dealer", "private", "manufacturer", "retailer", "unknown")
+_INVENTORY_SORTS = {
+    "Personal match": (("_match_status", True), ("match_score", False)),
+    "Fit score": (("fit_score", False),),
+    "Adjusted price ↑": (("adjusted_price", True),),
+    "Best deal": (("_deal_type", True), ("deal_pct", True)),
+    "Price ↑": (("price", True),),
+    "Miles ↑": (("miles", True),),
+    "Distance ↑": (("distance_mi", True),),
+    "Newest": (("first_seen", False),),
+    "Biggest price drop": (("price_change", True),),
+    "Longest listed": (("days_listed", False),),
+    "Link problems first": (("_link_rank", True), ("fit_score", False)),
+    "Deal rating": (("_deal_type", True),),
+    "Price ↓": (("price", False),),
+    "Miles ↓": (("miles", False),),
+    "Distance ↓": (("distance_mi", False),),
+    "Lowest monthly payment": (("est_monthly", True),),
+    "Longest range": (("range_mi", False),),
+    "Highest towing capacity": (("tow_capacity_lbs", False),),
+    "Newest model year": (("year", False),),
+    "Biggest savings vs market": (("deal_delta", True),),
+    "Recently changed price": (("last_price_change_at", False),),
+}
+SORT_OPTIONS = tuple(_INVENTORY_SORTS)
 SOURCE_LABELS = {
     "autodev": "Auto.dev", "marketcheck": "MarketCheck", "demo": "DEMO", "rivian": "Rivian", "carmax": "CarMax",
     "carvana": "Carvana", "autotrader": "AutoTrader", "autotempest": "AutoTempest", "ksl": "KSL",
@@ -101,6 +126,9 @@ def inventory_frame(conn: sqlite3.Connection, settings: dict) -> pd.DataFrame:
     favorites = {r[0] for r in conn.execute("SELECT vehicle_id FROM watchlist")}
     attrs = resolve_many(conn, [v["id"] for v in vehicles])
     stats = _obs_stats(conn)
+    last_price_changes = dict(conn.execute(
+        "SELECT vehicle_id, MAX(created_at) FROM change_events"
+        " WHERE event_type IN ('price_drop','price_increase') GROUP BY vehicle_id"))
     fa = finance.FinanceAssumptions.from_settings(settings["finance"])
     home_zip = settings.get("home_zip", "84020")
     priority = set(settings.get("priority_states") or [])
@@ -182,6 +210,7 @@ def inventory_frame(conn: sqlite3.Connection, settings: dict) -> pd.DataFrame:
                {"subframe": "unknown", "subframe_note": "Rivian front-subframe rule does not apply"}),
             "price": best["current_price"], "miles": miles,
             "price_change": st.get("total_change", 0), "last_price_change": st.get("last_change", 0),
+            "last_price_change_at": last_price_changes.get(v["id"]),
             "seller": best["seller_name"] or "", "seller_type": best["seller_type"] or "",
             "city": best["city"] or "", "state": best["state"] or "",
             "location": ", ".join(x for x in (best["city"], best["state"]) if x),
@@ -268,6 +297,7 @@ def inventory_frame(conn: sqlite3.Connection, settings: dict) -> pd.DataFrame:
         row["adjusted_price"], row["adjust_note"] = adjust.adjusted(row, settings.get("adjustments"),
                                                                     settings.get("warranty"))
         row["to_confirm"] = ", ".join(adjust.to_confirm(row, settings.get("adjustments")))
+        row.update(matching.evaluate(row, settings, a))
         rows.append(row)
     df = pd.DataFrame(rows)
     for col in ("year", "price", "miles", "epa_range", "range_mi", "tow_capacity_lbs", "distance_mi", "warranty_months_left", "est_monthly",
@@ -275,7 +305,7 @@ def inventory_frame(conn: sqlite3.Connection, settings: dict) -> pd.DataFrame:
                 "your_price"):
         df[col] = pd.to_numeric(df[col], errors="coerce")
     df = deals.annotate(df)
-    return df.sort_values(["fit_score", "price"], ascending=[False, True], na_position="last").reset_index(drop=True)
+    return sort_inventory(df, "Personal match").reset_index(drop=True)
 
 
 def fit_score(row: dict, settings: dict) -> tuple[int, str]:
@@ -325,6 +355,44 @@ def _any_allowed(options: pd.Series, allowed: list) -> pd.Series:
     return options.map(lambda opts: bool(set(opts or []) & allowed))
 
 
+def _seller_type(value) -> str:
+    value = value.strip().lower() if isinstance(value, str) else "unknown"
+    return value if value in SELLER_TYPES else "unknown"
+
+
+def sort_inventory(df: pd.DataFrame, sort_label: str) -> pd.DataFrame:
+    """Apply one inventory order, with unknown values last and stable price/vehicle ties."""
+    if df.empty:
+        return df.copy()
+    specs = list(_INVENTORY_SORTS.get(sort_label, _INVENTORY_SORTS["Fit score"]))
+    for column in ("price", "vehicle_id"):
+        if column in df and column not in {c for c, _ in specs}:
+            specs.append((column, True))
+    keys = {}
+    for column, _ in specs:
+        values = df[column] if column in df else pd.Series(float("nan"), index=df.index)
+        if column == "_match_status":
+            labels = df["match_status"] if "match_status" in df else pd.Series(None, index=df.index)
+            values = labels.map({status: i for i, status in enumerate(matching.MATCH_STATUSES)})
+        elif column == "_deal_type":
+            labels = df["deal_label"] if "deal_label" in df else pd.Series("Not rated", index=df.index)
+            values = labels.map(deals.deal_type).map({label: i for i, label in enumerate(deals.DEAL_TYPES)})
+        elif column == "_link_rank":
+            labels = df["link_result"] if "link_result" in df else pd.Series("", index=df.index)
+            rank = {label: 0 for label in linkcheck.PROBLEMS} | {"ok": 2, "": 3}
+            values = labels.map(lambda value: rank.get(value, 1) if isinstance(value, str) else 3)
+        elif column in ("first_seen", "last_price_change_at"):
+            values = pd.to_datetime(values, errors="coerce", utc=True, format="mixed")
+        else:
+            if column == "range_mi" and column not in df and "epa_range" in df:
+                values = df["epa_range"]
+            values = pd.to_numeric(values, errors="coerce")
+        keys[column] = values.to_numpy()
+    order = pd.DataFrame(keys).sort_values(list(keys), ascending=[asc for _, asc in specs],
+                                           na_position="last", kind="stable").index
+    return df.iloc[order].copy()
+
+
 def filter_checks(df: pd.DataFrame, f: dict) -> dict[str, pd.Series]:
     """Each filter as its own pass/fail Series, so we can say exactly why a truck is hidden."""
     checks: dict[str, pd.Series] = {}
@@ -350,6 +418,18 @@ def filter_checks(df: pd.DataFrame, f: dict) -> dict[str, pd.Series]:
         checks["brand"] = make.isin([b.lower() for b in f["brands"]])
     if f.get("trims"):
         checks["trim"] = df["trim_filter"].isin(f["trims"])
+    if f.get("deal_types"):
+        labels = df["deal_label"] if "deal_label" in df else pd.Series("Not rated", index=df.index)
+        checks["deal type"] = labels.map(deals.deal_type).isin(f["deal_types"])
+    if f.get("seller_types"):
+        sellers = df["seller_type"] if "seller_type" in df else pd.Series("unknown", index=df.index)
+        checks["seller type"] = sellers.map(_seller_type).isin(f["seller_types"])
+    if f.get("price_drops_only"):
+        drops = df["price_drops"] if "price_drops" in df else pd.Series(0, index=df.index)
+        checks["price drops"] = pd.to_numeric(drops, errors="coerce").fillna(0).gt(0)
+    if f.get("match_statuses"):
+        statuses = df["match_status"] if "match_status" in df else pd.Series(None, index=df.index)
+        checks["personal match"] = statuses.isin(f["match_statuses"])
     if "comparison_in_scope" in df:
         checks["comparison"] = df["comparison_in_scope"]
     yr = df["year"]
@@ -441,6 +521,19 @@ def why_hidden(row: pd.Series, f: dict) -> list[str]:
             out.append(row.get("comparison_excluded") or "outside comparison limits")
         elif name == "trim":
             out.append(f"trim {row['trim_filter']} is outside your selected trims")
+        elif name == "deal type":
+            out.append(f"deal type is {deals.deal_type(row.get('deal_label'))} "
+                       f"(your filter: {', '.join(f['deal_types'])})")
+        elif name == "seller type":
+            out.append(f"seller type is {_seller_type(row.get('seller_type'))} "
+                       f"(your filter: {', '.join(f['seller_types'])})")
+        elif name == "price drops":
+            out.append("no recorded price drops (you show only listings with price drops)")
+        elif name == "personal match":
+            status = row.get("match_status")
+            status = status if isinstance(status, str) and status else "not evaluated"
+            out.append(f"personal match is {status} "
+                       f"(your filter: {', '.join(f['match_statuses'])})")
         elif name == "range":
             out.append(f"range below {f.get('min_range', 0)} mi or unknown (check range filters)")
         else:
@@ -488,10 +581,11 @@ def apply_filters(df: pd.DataFrame, f: dict, search: str = "") -> pd.DataFrame:
 
 
 def events_frame(conn: sqlite3.Connection, run_id: int | None = None, since: str | None = None,
-                 types: list[str] | None = None) -> pd.DataFrame:
+                 types: list[str] | None = None, after_run_id: int | None = None) -> pd.DataFrame:
     q = ("SELECT e.*, l.url, l.source_key, l.seller_name, l.city, l.state, l.current_price, l.current_miles,"
-         " l.is_demo, v.vin, v.year, v.model FROM change_events e LEFT JOIN listings l ON l.id = e.listing_id"
-         " LEFT JOIN vehicles v ON v.id = e.vehicle_id WHERE 1=1")
+         " l.is_demo, l.status AS listing_status, v.vin, v.year, v.make, v.model, v.trim, r.trigger"
+         " FROM change_events e LEFT JOIN listings l ON l.id = e.listing_id"
+         " LEFT JOIN vehicles v ON v.id = e.vehicle_id LEFT JOIN runs r ON r.id=e.run_id WHERE 1=1")
     params: list = []
     if run_id is not None:
         q += " AND e.run_id = ?"
@@ -502,6 +596,11 @@ def events_frame(conn: sqlite3.Connection, run_id: int | None = None, since: str
     if types:
         q += f" AND e.event_type IN ({','.join('?' * len(types))})"
         params += types
+    if after_run_id is not None:
+        q += (" AND (e.run_id>=? OR (e.run_id IS NULL AND e.created_at >="
+              " (SELECT started_at FROM runs WHERE id=?)))"
+              " AND (e.run_id IS NULL OR r.finished_at IS NOT NULL)")
+        params += [after_run_id, after_run_id]
     q += " ORDER BY e.id DESC"
     df = pd.read_sql_query(q, conn, params=params)
     if not df.empty:
@@ -533,6 +632,28 @@ def last_search_run(conn: sqlite3.Connection) -> dict | None:
     d = dict(r)
     d["summary"] = json.loads(d.get("summary_json") or "{}")
     return d
+
+
+def refresh_changes(conn: sqlite3.Connection) -> dict:
+    """Latest completed refresh plus later recorded updates, independent of display filters."""
+    run = last_search_run(conn)
+    if run is None:
+        return {"run": None, "events": pd.DataFrame()}
+    run["first_refresh"] = run["status"] in ("success", "partial") and not conn.execute(
+        "SELECT 1 FROM runs WHERE trigger='run_search' AND finished_at IS NOT NULL"
+        " AND status IN ('success','partial') AND id<? LIMIT 1",
+        (run["id"],)).fetchone()
+    categories = {"new_listing": "new", "new_source_for_vin": "new", "price_drop": "price",
+                  "price_increase": "price", "provider_removed": "removed", "marked_removed": "removed",
+                  "disappeared": "missing"}
+    events = events_frame(conn, types=list(categories), after_run_id=run["id"])
+    if not events.empty:
+        events["category"] = events["event_type"].map(categories)
+        events["old_price"] = pd.to_numeric(events["old_value"], errors="coerce")
+        events["new_price"] = pd.to_numeric(events["new_value"], errors="coerce")
+        events["price_delta"] = (events["new_price"] - events["old_price"]).where(events["category"].eq("price"))
+        events["update_origin"] = events["run_id"].map(lambda rid: "Refresh" if rid == run["id"] else "After refresh")
+    return {"run": run, "events": events}
 
 
 def source_status(conn: sqlite3.Connection) -> pd.DataFrame:

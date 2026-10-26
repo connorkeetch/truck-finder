@@ -11,7 +11,7 @@ from .. import attributes, checklist, compare, dedup, finance, hiding, links, ph
 from ..geo import distance_from_zip
 from ..config import ACCIDENT_STATUSES, BATTERIES, GENERATIONS, MOTORS, TITLE_STATUSES, TONNEAU_STATUSES
 from ..extract import RIVIAN_COLORS
-from . import common
+from . import common, price_insights
 
 FIELD_LABELS = {
     "generation": "Generation", "model_year": "Model year", "trim": "Trim", "vpic_trim": "Trim (NHTSA)",
@@ -142,7 +142,12 @@ def render_truck(c, s, inv, vid: int) -> None:
                 help="Primary scenario from Settings → Loan assumptions")
     m[3].metric("Cash for target payment", common.money(row["cash_to_target"]))
     m[4].metric("Distance", f"{row['distance_mi']:,.0f} mi" if pd.notna(row["distance_mi"]) else "—")
-    m[5].metric("Fit score", int(row["fit_score"]), help=row["fit_breakdown"])
+    m[5].metric("Personal score", int(row.get("match_score") or 0), help="How this truck fits your shopping profile and saved limits.")
+    head.markdown(f"**Personal match: {row.get('match_status') or 'Needs verification'}**")
+    if row.get("match_failures"):
+        head.warning("Does not meet: " + "; ".join(row["match_failures"]))
+    if row.get("match_missing"):
+        head.caption("Need proof: " + "; ".join(row["match_missing"]))
     favorite_and_hide(c, row, vid, head)
 
     if row["hidden"]:
@@ -161,12 +166,13 @@ def render_truck(c, s, inv, vid: int) -> None:
     warranty_line(row)
     notes_box(c, vid, vehicle["notes"])
 
-    (t_overview, t_verify, t_prices, t_listings, t_history, t_finance, t_identity,
+    (t_overview, t_verify, t_prices, t_listings, t_history, t_finance, t_checklist, t_identity,
      t_log) = st.tabs(["Overview", "Verify equipment", "Price history", "Listings & sources", "History & recalls",
-                       "Financing", "Photo & identity", "Change log"])
+                       "Financing", "Checklist & contacts", "Photo & identity", "Change log"])
 
     # ---------------------------------------------------------- overview
     with t_overview:
+        st.caption(f"Legacy fit score: {row['fit_score']}/100 · {row['fit_breakdown']}")
         rows = []
         for f in ["model_year", "generation", "trim", "vpic_trim", "battery", "motor", "tonneau", "tonneau_mention",
                   "epa_range", "tow_capacity_lbs", "wheels", "exterior_color", "interior_color", "in_service_date", "warranty_expiration",
@@ -262,6 +268,7 @@ def render_truck(c, s, inv, vid: int) -> None:
 
     # ---------------------------------------------------------- price history
     with t_prices:
+        price_insights.render(c, vid)
         ph = queries.price_history(c, vid)
         if ph.empty:
             st.write("No observations yet.")
@@ -350,6 +357,9 @@ def render_truck(c, s, inv, vid: int) -> None:
                 "Monthly": st.column_config.NumberColumn("Monthly", format="dollar", step=0.01)})
             st.caption("Trade-in scenarios reduce the taxable price only if 'Dealer trade-in reduces taxable price' is on; "
                        "the separate cash sale does not by default. Edit assumptions in Settings → Loan assumptions.")
+
+    with t_checklist:
+        checklist_tab(c, vid, row)
 
     # ---------------------------------------------------------- notes & identity
     with t_identity:
@@ -611,12 +621,12 @@ def photo_form(c, vid: int, row, key: str = "top") -> None:
 def checklist_tab(c, vid: int, row) -> None:
     st.subheader("Pre-purchase checklist")
     st.caption("Work through these before you buy. OK on tonneau/title/accidents/config records verified values; "
-               "Problem on title or accidents records a branded title / reported accident.")
+               "Problem on title or accidents records a branded title / reported accident. Mark N/A for equipment or checks that do not apply.")
     state = checklist.get(c, vid)
     keys = list(checklist.STATUSES)
     with st.form(f"chk_{vid}"):
         answers = {}
-        for key, label, hint in checklist.ITEMS:
+        for key, label, hint in checklist.items_for(row):
             a, b, n = st.columns([3.2, 1.2, 3])
             a.markdown(f"**{label}**" + (f"  \n<small>{hint}</small>" if hint else ""), unsafe_allow_html=True)
             cur = state[key]

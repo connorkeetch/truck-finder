@@ -70,6 +70,9 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
     for r in df.to_dict("records"):
         price, yours = r.get("price"), r.get("your_price")
         chips = []
+        if r.get("match_status"):
+            chips.append((f"{r['match_status']} · {int(r.get('match_score') or 0)}/100",
+                          "warn" if r["match_status"] == "Does not qualify" else "note"))
         if r.get("title_status") == "branded":
             chips.append(("Branded title", "warn"))
         if r.get("accident_history") == "reported":
@@ -112,7 +115,8 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
             "adjust_note": r.get("adjust_note") or "",
             "vs_market": (("−" if r["deal_delta"] < 0 else "+") + _money(abs(r["deal_delta"])) + " vs market")
                          if r.get("deal_delta") == r.get("deal_delta") and r.get("deal_delta") is not None else "",
-            "fit": int(r.get("fit_score") or 0),
+            "fit": int(r.get("match_score") or 0),
+            "match_note": " · ".join([*r.get("match_failures", []), *r.get("match_missing", [])]),
             "miles": f"{r['miles']:,.0f} mi" if r.get("miles") == r.get("miles") and r.get("miles") is not None else "",
             "listed": _listed(r.get("days_listed")),
             "drops": f"{drops} price drop{'s' if drops != 1 else ''}" if drops else "",
@@ -152,28 +156,31 @@ ICONS = {
 }
 
 CSS = """
-:host { display:block; }
-.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(var(--card-min, 540px), 1fr)); gap:12px; }
+:host { display:block; min-width:0; }
+.grid-root { min-width:0; }
+.grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, var(--card-min, 540px)), 1fr)); gap:12px; }
 .card { display:flex; background:var(--st-secondary-background-color, #26282d); border:1px solid rgba(255,255,255,.07);
         border-radius:10px; overflow:hidden; color:var(--st-text-color, #e6e6e6); font-family:var(--st-font, sans-serif);
         font-size:13px; line-height:1.35; }
 .card.selected { outline:2px solid var(--st-primary-color, #f5a623); }
 .card.hidden { opacity:.6; }
-.photo { position:relative; flex:0 0 var(--photo-w, 210px); background:#111 center/cover no-repeat; cursor:pointer;
+.photo { position:relative; flex:0 0 var(--photo-w, 210px); background:#111 center/cover no-repeat;
          min-height:calc(var(--photo-w, 210px) * .72); }
+.photo-open { display:block; width:100%; height:100%; min-height:inherit; padding:0; border:0; background:transparent; cursor:pointer; }
 .photo img { width:100%; height:100%; object-fit:cover; display:block; }
 .photo .noimg { width:100%; height:100%; display:flex; align-items:center; justify-content:center; color:#777; font-size:12px; }
-.sel { position:absolute; top:6px; left:6px; width:22px; height:22px; border-radius:5px; background:rgba(0,0,0,.55);
+.sel { position:absolute; top:6px; left:6px; width:44px; height:44px; padding:0; border-radius:5px; background:rgba(0,0,0,.55);
        display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid rgba(255,255,255,.35); }
 .sel.on { background:var(--st-primary-color, #f5a623); border-color:transparent; }
 .sel.on::after { content:"✓"; color:#111; font-weight:700; font-size:14px; }
-.fit { position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,.65); border-radius:4px; padding:1px 6px; font-size:11px; }
+.fit { position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,.65); border-radius:4px; padding:1px 6px; font-size:11px; pointer-events:none; }
 .body { flex:1; min-width:0; padding:9px 12px 8px; display:flex; flex-direction:column; gap:4px; }
 .head { display:flex; align-items:center; gap:6px; min-width:0; }
 .title { flex:1; min-width:0; font-size:15px; font-weight:600; color:var(--st-link-color, #f5b94a); cursor:pointer; white-space:nowrap;
-         overflow:hidden; text-overflow:ellipsis; }
+         overflow:hidden; text-overflow:ellipsis; min-height:44px; padding:0; border:0; background:transparent; text-align:left; font-family:inherit; }
 .title:hover { text-decoration:underline; }
-.star { flex:0 0 auto; font-size:19px; line-height:1; color:#8b949e; cursor:pointer; user-select:none;
+.star { flex:0 0 44px; min-width:44px; min-height:44px; padding:0; border:0; background:transparent;
+        font-size:19px; line-height:1; color:#8b949e; cursor:pointer; user-select:none;
         transition:transform .1s; }
 .star:hover { color:#f5c542; transform:scale(1.15); }
 .star.on { color:#f5c542; }
@@ -196,10 +203,21 @@ svg.i { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2;
 .chip.note { background:rgba(79,163,247,.12); color:#9ccaf9; border-color:rgba(79,163,247,.35); }
 .chip.muted { color:#9aa0a6; }
 .notes { color:#b8bcc2; font-style:italic; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.links { display:flex; gap:12px; margin-top:auto; padding-top:2px; font-size:12px; }
-.links a, .links span { color:var(--st-link-color, #f5b94a); text-decoration:none; cursor:pointer; }
-.links a:hover, .links span:hover { text-decoration:underline; }
+.links { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:auto; padding-top:2px; font-size:12px; }
+.links a, .links button { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0 4px; border:0;
+                         background:transparent; font:inherit; color:var(--st-link-color, #f5b94a); text-decoration:none; cursor:pointer; }
+.links a:hover, .links button:hover { text-decoration:underline; }
+button:focus-visible, a:focus-visible { outline:3px solid var(--st-primary-color, #f5a623); outline-offset:-3px; }
 .empty { color:#9aa0a6; padding:12px; }
+@media (max-width:640px) {
+  .grid { grid-template-columns:minmax(0, 1fr); }
+  .card { flex-direction:column; }
+  .photo { flex:none; width:100%; min-height:0; aspect-ratio:4 / 3; }
+  .photo-open { min-height:0; }
+  .title, .adj, .notes { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; }
+  .it { white-space:normal; overflow-wrap:anywhere; }
+  .body { padding:10px 12px; }
+}
 """
 
 JS = """
@@ -213,14 +231,16 @@ function card(c) {
   const photo = safeUrl(c.photo) ? `<img loading="lazy" src="${safeUrl(c.photo)}" alt="">` : '<div class="noimg">no photo</div>';
   const chips = (c.chips || []).map(([t, k]) => `<span class="chip ${esc(k)}">${esc(t)}</span>`).join('');
   const link = (u, t) => safeUrl(u) ? `<a href="${safeUrl(u)}" target="_blank" rel="noopener noreferrer">${esc(t)} ↗</a>` : '';
-  return `<div class="card${c.selected ? ' selected' : ''}" data-vid="${c.vid}">
-    <div class="photo" data-act="open">${photo}
-      <div class="sel${c.selected ? ' on' : ''}" data-act="toggle" title="Select to compare or hide"></div>
-      <div class="fit" title="Fit score">fit ${esc(c.fit)}</div></div>
+  return `<div class="card${c.selected ? ' selected' : ''}" data-vid="${c.vid}" data-name="${esc(c.title)}">
+    <div class="photo"><button type="button" class="photo-open" data-act="open" aria-label="Open details for ${esc(c.title)}">${photo}</button>
+      <button type="button" class="sel${c.selected ? ' on' : ''}" data-act="toggle" role="checkbox"
+        aria-checked="${Boolean(c.selected)}" aria-label="Select ${esc(c.title)} to compare or hide" title="Select to compare or hide"></button>
+      <div class="fit" title="Personal score">personal ${esc(c.fit)}</div></div>
     <div class="body">
-      <div class="head"><span class="star${c.fav ? ' on' : ''}" data-act="fav"
-          title="${c.fav ? 'Remove from favorites' : 'Add to favorites'}">${c.fav ? '★' : '☆'}</span>
-        <div class="title" data-act="open">${esc(c.title)}</div></div>
+      <div class="head"><button type="button" class="star${c.fav ? ' on' : ''}" data-act="fav" aria-pressed="${Boolean(c.fav)}"
+          aria-label="${c.fav ? 'Remove' : 'Add'} ${esc(c.title)} ${c.fav ? 'from' : 'to'} favorites"
+          title="${c.fav ? 'Remove from favorites' : 'Add to favorites'}">${c.fav ? '★' : '☆'}</button>
+        <button type="button" class="title" data-act="open">${esc(c.title)}</button></div>
       <div class="price">
         <span class="tag" style="background:${esc(c.deal_color)}" title="${esc(c.deal)}">${icon('tag')}${esc(c.price)}</span>
         ${c.list_price ? `<span class="list" title="List price before your discount">${esc(c.list_price)}</span>` : ''}
@@ -234,9 +254,10 @@ function card(c) {
       <div class="row">${it('battery', c.battery, c.battery_note)}${it('bolt', c.motor, 'Motor')}
         ${it('truck', c.tow, c.tow_note)}${it('shield', c.warranty)}${it('dollar', c.monthly, 'Estimated monthly payment')}${it('truck', c.shipping)}</div>
       ${chips ? `<div class="chips">${chips}</div>` : ''}
+      ${c.match_note ? `<div class="muted" title="${esc(c.match_note)}">${esc(c.match_note)}</div>` : ''}
       ${c.notes ? `<div class="notes" title="${esc(c.notes)}">“${esc(c.notes)}”</div>` : ''}
       <div class="links">${link(c.seller_url, 'Seller listing')}${!c.seller_url ? link(c.find_url, 'Find seller') : ''}
-        ${link(c.carfax_url, 'Carfax')}<span data-act="open">Details</span></div>
+        ${link(c.carfax_url, 'Carfax')}<button type="button" data-act="open">Details</button></div>
     </div></div>`;
 }
 
@@ -259,11 +280,14 @@ export default function (component) {
       e.stopPropagation();
       const on = !el.classList.contains('on');
       el.classList.toggle('on', on); cardEl.classList.toggle('selected', on);   // instant feedback
+      el.setAttribute('aria-checked', String(on));
       setTriggerValue('action', { kind: 'toggle', vid, on, t: Date.now() });
     } else if (el.dataset.act === 'fav') {
       const on = !el.classList.contains('on');
       el.classList.toggle('on', on); el.textContent = on ? '★' : '☆';             // instant feedback
       el.title = on ? 'Remove from favorites' : 'Add to favorites';
+      el.setAttribute('aria-pressed', String(on));
+      el.setAttribute('aria-label', `${on ? 'Remove' : 'Add'} ${cardEl.dataset.name || 'this truck'} ${on ? 'from' : 'to'} favorites`);
       setTriggerValue('action', { kind: 'fav', vid, on, t: Date.now() });
     } else {
       setTriggerValue('action', { kind: 'open', vid, t: Date.now() });

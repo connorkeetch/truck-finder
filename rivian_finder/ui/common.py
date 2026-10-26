@@ -2,8 +2,10 @@
 from __future__ import annotations
 
 import json
+import hmac
 import logging
 import logging.handlers
+import os
 import shutil
 from datetime import date, datetime, timezone
 from pathlib import Path
@@ -11,7 +13,7 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
-from .. import compare, config, db, export_xlsx, photos, queries, services
+from .. import cloud, compare, config, db, export_xlsx, photos, queries, services
 from ..credentials import RedactingFilter
 from ..importers.capture_server import CaptureServer
 from ..sources.base import configured_brands, search_targets
@@ -38,8 +40,13 @@ def _conn():
     return db.connect(config.DB_PATH)
 
 
+@st.cache_resource(scope="session", on_release=lambda c: c.close())
+def _session_conn():
+    return db.connect(config.DB_PATH)
+
+
 def conn():
-    return _conn()
+    return _session_conn() if cloud.is_cloud() else _conn()
 
 
 @st.cache_data(show_spinner=False, max_entries=3)
@@ -59,6 +66,9 @@ def inventory(s: dict | None = None) -> pd.DataFrame:
 
 
 def reset_connection() -> None:
+    if cloud.is_cloud():
+        _session_conn.clear()
+        return
     try:
         _conn().close()
     except Exception:
@@ -68,6 +78,8 @@ def reset_connection() -> None:
 
 @st.cache_resource
 def capture_server() -> CaptureServer | None:
+    if cloud.is_cloud():
+        return None
     try:
         return CaptureServer(config.DB_PATH, config.CAPTURE_HOST, config.CAPTURE_PORT).start()
     except OSError:
@@ -95,6 +107,13 @@ def boot() -> None:
 
 def remote_gate() -> None:
     """Devices other than this computer must enter the PIN (and phone access must be turned on)."""
+    if cloud.is_cloud():
+        expected = os.environ.get("TRUCK_FINDER_PROXY_SECRET", "")
+        received = st.context.headers.get("X-Truck-Finder-Token", "")
+        if not expected or not hmac.compare_digest(received, expected):
+            st.error("Open the private Truck Finder address and sign in to continue.")
+            st.stop()
+        return
     if st.context.ip_address is None or st.session_state.get("remote_ok"):
         return
     from .. import access

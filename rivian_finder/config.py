@@ -45,6 +45,10 @@ DEFAULT_SETTINGS: dict = {
         "model": "",
         "brands": [],                # empty = all collected brands
         "trims": [],                 # empty = all eligible trim families
+        "deal_types": [],            # empty = all deal ratings
+        "seller_types": [],          # empty = all seller types
+        "price_drops_only": False,
+        "match_statuses": [],        # empty = all personal requirement statuses
         "min_range": 0,
         "include_unknown_range": True,
         "year_min": 2000,
@@ -70,6 +74,8 @@ DEFAULT_SETTINGS: dict = {
         "show_hidden": False,         # trucks you marked "not interested"
         "hidden_only": False,
     },
+    "shopping_profile": {"range_min": 0, "range_priority": "prefer", "tow_min": 0, "tow_priority": "must",
+                         "must_have": [], "prefer": []},
     # Collection scope: what API connectors ask providers for. Deliberately broader than the display
     # filters so tightening a filter does not make listings look like they disappeared.
     "collection": {

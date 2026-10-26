@@ -33,6 +33,24 @@ ITEMS: list[tuple[str, str, str]] = [
 ITEM_LABELS = {k: label for k, label, _ in ITEMS}
 
 
+def items_for(row) -> list[tuple[str, str, str]]:
+    """Keep saved answer keys while showing prompts for the truck being inspected."""
+    if str(row.get("make") or "").casefold() == "rivian" and str(row.get("model") or "").upper() == "R1T":
+        return ITEMS
+    generic = {
+        "in_service": ("Warranty in-service date confirmed", "Manufacturer records or first sale date; enter it under Verify equipment."),
+        "config": ("Battery and motor configuration match the vehicle", "Check VIN-specific manufacturer records or the window sticker. Mark N/A where not applicable."),
+        "warranty": ("Remaining warranty confirmed with manufacturer", "Confirm coverage with the manufacturer using the VIN."),
+        "recalls": ("Recalls and service campaigns done", "NHTSA VIN lookup and manufacturer service history."),
+        "account": ("Connected services transferred; keys and access devices handed over", "Remove the previous owner's access where applicable."),
+        "charging": ("EV charging and charge-port operation checked", "For an EV, test DC fast charging and Level 2. Otherwise mark N/A."),
+        "suspension": ("Adjustable suspension works, if fitted", "Test the fitted suspension functions; otherwise mark N/A."),
+        "gear": ("Storage compartments and fitted accessories work", "Check doors, locks, powered storage and tailgate functions as fitted."),
+        "tires": ("Tire tread and condition acceptable", "Record tread depth, condition and tire specifications."),
+    }
+    return [(key, *generic[key]) if key in generic else (key, label, hint) for key, label, hint in ITEMS]
+
+
 def get(conn: sqlite3.Connection, vehicle_id: int) -> dict[str, dict]:
     rows = {r["item"]: dict(r) for r in conn.execute("SELECT * FROM checklist WHERE vehicle_id=?", (vehicle_id,))}
     return {k: rows.get(k, {"item": k, "status": "todo", "note": "", "updated_at": None}) for k, _, _ in ITEMS}

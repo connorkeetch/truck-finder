@@ -2,13 +2,15 @@
 from __future__ import annotations
 
 import copy
+from datetime import datetime, timezone
+import os
 from pathlib import Path
 
 import streamlit as st
 
 import pandas as pd
 
-from .. import access, alerts, backup, config, credentials, notifier, queries, scheduler, services, shipping, warranty
+from .. import access, alerts, backup, cloud, config, credentials, notifier, queries, scheduler, services, shipping, warranty
 from ..config import US_STATES
 from ..geo import zip_latlon
 from ..sources.base import EV_TRUCK_PRESET, search_targets
@@ -33,7 +35,8 @@ def render() -> None:
     s = common.settings()
     st.title("Settings")
     tabs = st.tabs(["Vehicle filters", "Collection scope", "Location", "API credentials", "Loan assumptions",
-                    "Warranty", "Export", "Backup & data", "Shipping", "Alerts", "Phone access"])
+                    "Warranty", "Export", "Backup & data", "Shipping", "Alerts",
+                    "Cloud access" if cloud.is_cloud() else "Phone access"])
 
     with tabs[0]:
         st.write("Default filters for the Dashboard, Inventory and Excel export. They only filter what is already "
@@ -162,18 +165,25 @@ def render() -> None:
             st.success("Saved.")
 
     with tabs[3]:
-        st.write("Keys are read from environment variables / `.env` first, then from your OS credential store "
-                 "(Windows Credential Manager, macOS Keychain, or Secret Service). They are never written to the "
-                 "database, exports or logs.")
+        if cloud.is_cloud():
+            st.write("Manage API keys in this Railway service's Variables: AUTODEV_API_KEY and MARKETCHECK_API_KEY. "
+                     "Apply the updated deployment after changing them. Keys are never stored in the inventory database.")
+        else:
+            st.write("Keys are read from environment variables / `.env` first, then from your OS credential store "
+                     "(Windows Credential Manager, macOS Keychain, or Secret Service). They are never written to the "
+                     "database, exports or logs.")
         info = {
             "autodev": ("Auto.dev", "https://auto.dev/pricing", "Free plan: 1,000 calls/month, no card. Create a key at auto.dev/dashboard/api-keys."),
             "marketcheck": ("MarketCheck", "https://www.marketcheck.com/apis/pricing", "Free plan: 500 calls/month, 100-mile radius."),
         }
         for key, (name, link, note) in info.items():
             with st.container(border=True):
-                val, where = credentials.get_api_key(key)
+                val, where = ((os.environ.get(credentials.KEYS[key], "").strip(), "env") if cloud.is_cloud()
+                              else credentials.get_api_key(key))
                 st.markdown(f"**{name}** — " + (f"configured via **{where}** ({credentials.mask(val)})" if val else "not configured"))
                 st.caption(f"{note} [{link}]({link})")
+                if cloud.is_cloud():
+                    continue
                 with st.form(f"key_{key}"):
                     new = st.text_input(f"{name} API key", type="password", key=f"k_{key}")
                     a, b = st.columns(2)
@@ -271,7 +281,12 @@ def render() -> None:
                                                        int(e["new_listing_window_days"]))
         e["include_filtered_out"] = st.checkbox("Current Inventory sheet includes vehicles outside my filters",
                                                 e["include_filtered_out"])
-        e["export_dir"] = st.text_input("Also save exports to folder (blank = data/exports)", e.get("export_dir", ""))
+        if cloud.is_cloud():
+            e["export_dir"] = ""
+            st.caption(f"Exports are saved in the managed data folder: {config.EXPORT_DIR}. "
+                       "Use Download .xlsx to save a copy on your device.")
+        else:
+            e["export_dir"] = st.text_input("Also save exports to folder (blank = data/exports)", e.get("export_dir", ""))
         if st.button("Save export settings", type="primary"):
             if e["export_dir"] and not Path(e["export_dir"]).exists():
                 st.error("That folder does not exist.")
@@ -286,16 +301,27 @@ def render() -> None:
         c1, c2 = st.columns(2)
         if c1.button("Back up now"):
             st.success(f"Backup written: {backup.backup_db(c)}")
-        c2.download_button("Download full JSON export", backup.export_json(c), "rivian_finder_export.json",
+        c2.download_button("Download JSON export" if cloud.is_cloud() else "Download full JSON export",
+                           backup.export_json(c), "rivian_finder_export.json",
                            "application/json")
         backups = backup.list_backups()
         if backups:
-            choice = st.selectbox("Restore from backup", backups, format_func=lambda p: p.name)
-            if st.button("Restore selected backup", help="Your current database is backed up first"):
+            choice = st.selectbox("Database backup" if cloud.is_cloud() else "Restore from backup", backups,
+                                  format_func=lambda p: p.name)
+            if cloud.is_cloud():
+                st.download_button("Download selected database backup", choice.read_bytes(), choice.name,
+                                   "application/octet-stream")
+            if st.button("Restore selected backup", disabled=cloud.is_cloud(),
+                         help="Restore during server maintenance." if cloud.is_cloud()
+                         else "Your current database is backed up first"):
                 common.reset_connection()
                 backup.restore_db(choice)
                 st.success("Restored. Reloading…")
                 st.rerun()
+        if cloud.is_cloud():
+            st.info("Download a database backup to preserve the complete inventory and history. Restore requires "
+                    "server maintenance with the app stopped; replacing the live database while other connections "
+                    "are open is unsafe. Cached photos are stored separately in the data folder.")
         st.divider()
         demo = c.execute("SELECT COUNT(*) FROM vehicles WHERE is_demo=1").fetchone()[0]
         st.markdown(f"**Demo data:** {demo} synthetic vehicles stored.")
@@ -352,6 +378,30 @@ def shipping_settings(s: dict) -> None:
 
 def alert_settings(c, s: dict) -> None:
     a = {**alerts.DEFAULTS, **(s.get("alerts") or {})}
+    if cloud.is_cloud():
+        st.write("Scheduled searches run on the server while this page is closed. Check the Dashboard and refresh "
+                 "history for results; this does not send phone push or desktop notifications.")
+        a["enabled"] = st.toggle("Scheduled searches enabled", bool(a["enabled"]), key="cloud_alert_enabled")
+        times = st.text_input("Times (24h HH:MM, comma-separated)", ", ".join(a["times"]), key="cloud_alert_times")
+        valid = True
+        try:
+            tz = cloud.schedule_timezone()
+            parsed = sorted(set(t.strip() for t in times.split(",") if t.strip()))
+            due = cloud.next_run(datetime.now(timezone.utc), parsed, tz)
+            st.caption(f"Timezone: {tz.key}. Next scheduled time when enabled: {due.astimezone(tz):%Y-%m-%d %H:%M %Z}. "
+                       "After a restart, searches wait for the next future time; missed runs are skipped.")
+        except ValueError as error:
+            valid = False
+            st.error(str(error))
+        if st.button("Save scheduled search settings", type="primary", disabled=not valid and a["enabled"]):
+            if valid:
+                a["times"] = parsed
+            s["alerts"] = a
+            common.save_settings(s)
+            st.success("Saved.")
+        st.info("Scheduled search is ON." if (s.get("alerts") or {}).get("enabled") else "Scheduled search is OFF.")
+        st.caption("Scheduled runs respect the same connector limits and monthly API budget as manual searches.")
+        return
     st.write("Optional: search on a schedule and get a desktop notification. Off until you turn it on. The search "
              "runs in the background while you're logged in; this window doesn't need to be open.")
     c1, c2, c3 = st.columns(3)
@@ -409,6 +459,11 @@ def alert_settings(c, s: dict) -> None:
 
 
 def phone_settings() -> None:
+    if cloud.is_cloud():
+        st.write("Open your private hosted URL from any device and sign in. The hosting configuration manages "
+                 "the login and access; home-network PIN and Windows Firewall settings do not apply here.")
+        st.caption("Manage the private URL and login in your hosting service settings.")
+        return
     acc = access.load()
     st.write("Open Truck Finder from your phone on the same Wi-Fi. Anyone on your network would need the PIN; this "
              "computer never asks for it. The browser-extension receiver stays private to this computer.")

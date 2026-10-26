@@ -14,10 +14,10 @@ from datetime import date
 import pandas as pd
 import streamlit as st
 
-from .. import adjust, attributes, compare, config, hiding, linkcheck, queries, services, subframe, warranty
+from .. import adjust, attributes, compare, config, deals, hiding, linkcheck, matching, queries, services, subframe, warranty
 from ..config import BATTERIES, GENERATIONS, MOTORS, TONNEAU_STATUSES, US_STATES
 from ..sources.base import SUPPORTED_BRANDS, search_targets
-from . import add_truck, cards, common, compare_page, vehicle
+from . import add_truck, cards, common, compare_page, refresh_changes, vehicle
 
 EDITABLE = ["pick", "motor_edit", "transport_edit", "notes"]
 SELECTED = "inv_selected"          # vehicle ids ticked in the ✓ column (compare / hide several at once)
@@ -39,6 +39,19 @@ def filter_controls(f: dict, key: str = "inv", trim_options: list[str] | None = 
     f["trims"] = st.multiselect("Trims (empty = all)", sorted(set(trim_options or []) | set(selected_trims)),
                                  selected_trims, key=f"{key}_trims",
                                  help="Trims from stored inventory, grouped by brand. Collection-scope exclusions still apply.")
+    c1, c2, c3 = st.columns(3)
+    f["deal_types"] = c1.multiselect("Deal rating (empty = all)", deals.DEAL_TYPES, f.get("deal_types") or [],
+                                      key=f"{key}_deal_types",
+                                      help="Based on similar vehicles in your saved inventory. Not rated can mean there is not enough data. Accident warnings remain visible.")
+    f["seller_types"] = c2.multiselect("Seller type (empty = all)", queries.SELLER_TYPES,
+                                        f.get("seller_types") or [], key=f"{key}_seller_types",
+                                        format_func=lambda value: {"private": "Private seller"}.get(value, value.title()))
+    f["price_drops_only"] = c3.checkbox("Only listings with price drops", f.get("price_drops_only", False),
+                                         key=f"{key}_price_drops",
+                                         help="At least one price drop anywhere in the app's recorded history, including before the latest refresh.")
+    f["match_statuses"] = st.multiselect("My requirements (empty = all)", matching.MATCH_STATUSES,
+                                          f.get("match_statuses") or [], key=f"{key}_match_statuses",
+                                          help="Set must-haves and preferences in My shortlist. Unverified equipment needs proof before it meets a requirement.")
     c1, c2, c3, c4 = st.columns(4)
     f["min_range"] = c1.number_input("Minimum EPA range (mi, 0 = any)", 0, 600, int(f.get("min_range") or 0),
                                       key=f"{key}_range")
@@ -165,17 +178,20 @@ def table_view(df: pd.DataFrame, picks: set[int]) -> pd.DataFrame:
     view["subframe_label"] = view["subframe"].map(lambda s: subframe.LABELS.get(s, s))
     view["transport_edit"] = view["transport_cost"]
     view["flags"] = view["flags"].map(lambda x: f"🔁 {x}" if x else "")
+    view["match_details"] = [" · ".join([*r.get("match_failures", []), *r.get("match_missing", []),
+                                        *r.get("match_reasons", [])]) for r in view.to_dict("records")]
     view["first_seen"] = view["first_seen"].str.slice(0, 10)
     return view
 
 
 # pinned (stay put while you scroll right): ✓, photo, truck (click = details), sold by
-COLUMNS = ["pick", "photo", "name", "sold_by", "location_dist", "fit_score", "seller_url", "link", "deal_label",
+COLUMNS = ["pick", "photo", "name", "sold_by", "location_dist", "match_status", "match_score", "match_details", "seller_url", "link", "deal_label",
            "price_text", "adjusted_text", "adjust_note",
            "est_monthly", "transport_edit", "market_text", "miles", "battery_range", "tow_capacity_lbs", "tow_src", "tow_conf", "battery_note", "motor_edit",
            "warranty_ends", "warranty_left", "subframe_label", "notes", "days_listed", "price_drops", "leverage", "generation", "color",
            "flags", "history_report_url", "find_seller_url", "status", "first_seen", "vin", "vehicle_id", "listing_id"]
-LABELS = {"name": "Truck", "sold_by": "Sold by", "location_dist": "Location", "fit_score": "Fit",
+LABELS = {"name": "Truck", "sold_by": "Sold by", "location_dist": "Location",
+          "match_status": "My requirements", "match_score": "Personal score", "match_details": "Match details",
           "seller_url": "Seller listing", "link": "Link", "deal_label": "Deal", "adjusted_text": "Adjusted price",
           "adjust_note": "Adjustments", "price_text": "Price", "est_monthly": "Est. /mo",
           "transport_edit": "Transport", "market_text": "vs market", "miles": "Miles",
@@ -192,7 +208,7 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
     return {
         "pick": st.column_config.CheckboxColumn("✓", width=40, pinned=True,
                                                 help="Select trucks to compare (2–4) or hide several at once — the "
-                                                     "actions appear at the top of the sidebar"),
+                                                     "actions appear above the results"),
         "photo": st.column_config.ImageColumn("Photo", width=int(row_h * 4 / 3), pinned=True),
         "name": st.column_config.ButtonColumn("Truck", width="medium", type="tertiary", pinned=True, alignment="left",
                                               key="inv_open_click", on_click=_open_clicked,
@@ -201,7 +217,10 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
                                                    "your max price or miles)"),
         "sold_by": st.column_config.TextColumn("Sold by", width="medium", pinned=True),
         "location_dist": st.column_config.TextColumn("Location", width=190, help="Straight-line distance from your ZIP"),
-        "fit_score": st.column_config.ProgressColumn("Fit", min_value=0, max_value=100, format="%d", width="small"),
+        "match_status": st.column_config.TextColumn("My requirements", width="medium"),
+        "match_score": st.column_config.ProgressColumn("Personal score", min_value=0, max_value=100, format="%d",
+                                                       help="Ranks saved preferences and room under your budget, mileage and distance limits. Proof status is shown separately."),
+        "match_details": st.column_config.TextColumn("Match details", width="large"),
         "seller_url": st.column_config.LinkColumn("Seller listing", display_text="seller ↗"),
         "link": st.column_config.TextColumn("Link", width=80,
                                             help="Last 'Check listing links' result: ✓ live · ✗ gone · ↪ moved (usually "
@@ -250,6 +269,7 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Inventory")
+    refresh_changes.render(c, s)
     inv = common.inventory(s)
     add_truck.add_truck_panel(inv)
     if inv.empty:
@@ -281,21 +301,20 @@ def render() -> None:
     st.session_state["inv_filters"] = f
     adjustments_editor(s)
 
-    top1, top2, top3, top4, top5, top6 = st.columns([2.6, 1, 1, 1.2, 1.3, 1.2])
-    search = top1.text_input("Search — or paste a VIN / listing link to find any truck", key="inv_search",
-                             placeholder="e.g. Blue, Denver, 7FCTGBAL2RN900101, https://www.carvana.com/vehicle/…")
-    f["favorites_only"] = top2.toggle("★ Favorites only", f.get("favorites_only", False))
+    search = st.text_input("Search — or paste a VIN / listing link to find any truck", key="inv_search",
+                            placeholder="e.g. Blue, Denver, 7FCTGBAL2RN900101, https://www.carvana.com/vehicle/…")
     n_hidden = int(inv["hidden"].sum())
-    f["hidden_only"] = top3.toggle(f"🚫 Hidden ({n_hidden})", False, key="inv_hidden_only",
-                                   help="Only the trucks you marked Not interested — tick ✓ and Restore, or restore "
-                                        "from the truck's details")
-    sort = top4.selectbox("Sort by", ["Fit score", "Adjusted price ↑", "Best deal", "Price ↑", "Miles ↑", "Distance ↑", "Newest",
-                                      "Biggest price drop", "Longest listed", "Link problems first"])
-    with top5:
+    with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
+        sort = st.selectbox("Sort by", queries.SORT_OPTIONS, key="inv_sort", width=230)
+        f["favorites_only"] = st.toggle("★ Favorites only", f.get("favorites_only", False))
+        f["hidden_only"] = st.toggle(f"🚫 Hidden ({n_hidden})", False, key="inv_hidden_only",
+                                      help="Only trucks marked Not interested. Select and Restore, or restore from the truck's details.")
+        if st.button("▶ Refresh", key="inv_refresh", help="Choose which brands to refresh before starting a search."):
+            common.search_dialog()
+    with st.expander("Display options"):
         size = common.photo_size_control("inv_photo_size")
-    row_h = common.PHOTO_SIZES[size]
-    with top6:
         layout = _view_control(s)
+    row_h = common.PHOTO_SIZES[size]
 
     # ---- which trucks to show
     lookup = _looks_like_lookup(search)
@@ -316,15 +335,7 @@ def render() -> None:
         df = queries.apply_filters(inv, f, search)
         in_filters = set(queries.apply_filters(inv, strict, search)["vehicle_id"])
         df = df.assign(_near=~df["vehicle_id"].isin(in_filters))
-    sorters = {"Fit score": (["fit_score"], [False]), "Best deal": (["deal_pct"], [True]),
-               "Price ↑": (["price"], [True]), "Adjusted price ↑": (["adjusted_price"], [True]), "Miles ↑": (["miles"], [True]), "Distance ↑": (["distance_mi"], [True]),
-               "Newest": (["first_seen"], [False]), "Biggest price drop": (["price_change"], [True]),
-               "Longest listed": (["days_listed"], [False]),
-               "Link problems first": (["_link_rank", "fit_score"], [True, False])}
-    rank = {r: 0 for r in linkcheck.PROBLEMS} | {"ok": 2, "": 3}
-    df = df.assign(_link_rank=df["link_result"].map(lambda r: rank.get(r, 1)))
-    cols, asc = sorters[sort]
-    df = df.sort_values(cols, ascending=asc, na_position="last")
+    df = queries.sort_inventory(df, sort)
     near = int(df["_near"].sum()) if not df.empty else 0
     hint = (" · **click a photo or name** for full details · ☆ adds a favorite · tick a photo's box to compare or "
             "hide several"
@@ -336,6 +347,8 @@ def render() -> None:
         return
 
     picks = set(st.session_state.get(SELECTED, set())) & set(inv["vehicle_id"])
+    if picks:
+        _selection_box(c, inv, picks)
     view = table_view(df, picks)
     if layout == "Cards":
         limit = st.session_state.get("inv_cards_limit", CARDS_PAGE)
@@ -348,8 +361,6 @@ def render() -> None:
         _table(view, row_h)
 
     # ---- selection actions, details, compare
-    if picks:
-        _selection_box(c, inv, picks)
     csv = view[[col for col in COLUMNS if col in LABELS]].rename(columns=LABELS)
     csv["Truck"] = csv["Truck"].str.replace(r"\s*›$", "", regex=True)
     st.download_button("Download this view as CSV", csv.to_csv(index=False), file_name="rivian_inventory_view.csv",
@@ -491,34 +502,33 @@ def _clear_selection() -> None:
 
 
 def _selection_box(c, inv: pd.DataFrame, picks: set[int]) -> None:
-    """Actions for the ✓-selected trucks, at the top of the sidebar so they're visible at any scroll position."""
+    """Keep selection actions beside the results, including when the sidebar is closed."""
     chosen = inv[inv["vehicle_id"].isin(picks)]
-    box = st.session_state.get("_actions_box")
-    with (box if box is not None else st.container()).container(border=True):
-        names = ", ".join(str(n) for n in chosen["sold_by"].head(3)) + ("…" if len(chosen) > 3 else "")
-        st.markdown(f"**{len(chosen)} truck{'s' if len(chosen) != 1 else ''} selected**  \n<small>{names}</small>",
-                    unsafe_allow_html=True)
-        if st.button("⚖ Compare", type="primary", width="stretch", key="inv_sel_cmp",
-                     disabled=not 2 <= len(chosen) <= 4, help="Select 2–4 trucks"):
-            st.session_state.pop("dialog_vid", None)
-            st.session_state["compare_open"] = True
-        reason = st.selectbox("Not interested because", list(hiding.HIDE_REASONS), format_func=hiding.reason_label,
-                              key="inv_sel_reason")
-        if st.button(f"🚫 Hide {'these' if len(chosen) != 1 else 'it'}", width="stretch", key="inv_sel_hide",
+    with st.container(border=True):
+        st.markdown(f"**{len(chosen)} truck{'s' if len(chosen) != 1 else ''} selected**")
+        with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+            if st.button("⚖ Compare", type="primary", key="inv_sel_cmp",
+                         disabled=not 2 <= len(chosen) <= 4, help="Select 2–4 trucks"):
+                st.session_state.pop("dialog_vid", None)
+                st.session_state["compare_open"] = True
+            if st.button("Clear selection", key="inv_sel_clear"):
+                _clear_selection()
+            hidden = chosen[chosen["hidden"]]
+            if not hidden.empty and st.button(f"↩ Restore {len(hidden)} hidden", key="inv_sel_restore"):
+                for vid in hidden["vehicle_id"]:
+                    hiding.restore_vehicle(c, int(vid))
+                _clear_selection()
+        with st.popover("🚫 Hide selected…"):
+            reason = st.selectbox("Not interested because", list(hiding.HIDE_REASONS), format_func=hiding.reason_label,
+                                  key="inv_sel_reason")
+            if st.button(f"🚫 Hide {'these' if len(chosen) != 1 else 'it'}", width="stretch", key="inv_sel_hide",
                      help="Hides them everywhere; 'Title issues' also records the title as branded. Undo: 🚫 Hidden "
                           "toggle."):
-            for vid in chosen["vehicle_id"]:
-                hiding.hide_vehicle(c, int(vid), reason, "Hidden from Inventory selection")
-            common.flash(f"Hid {len(chosen)} truck(s): {hiding.reason_label(reason)}. Toggle 🚫 Hidden to see or "
-                         "restore them.", "info")
-            _clear_selection()
-        hidden = chosen[chosen["hidden"]]
-        if not hidden.empty and st.button(f"↩ Restore {len(hidden)} hidden", width="stretch", key="inv_sel_restore"):
-            for vid in hidden["vehicle_id"]:
-                hiding.restore_vehicle(c, int(vid))
-            _clear_selection()
-        if st.button("Clear selection", width="stretch", key="inv_sel_clear"):
-            _clear_selection()
+                for vid in chosen["vehicle_id"]:
+                    hiding.hide_vehicle(c, int(vid), reason, "Hidden from Inventory selection")
+                common.flash(f"Hid {len(chosen)} truck(s): {hiding.reason_label(reason)}. Toggle 🚫 Hidden to see or "
+                             "restore them.", "info")
+                _clear_selection()
 
 
 def _on_edit(editor_key: str, rows: list[tuple[int, int | None]]) -> None:

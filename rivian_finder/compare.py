@@ -13,7 +13,12 @@ ACCIDENT_RANK = {"none_reported": 2, "unknown": 1, "reported": 0}
 # (label, column, format, best): best is "low", "high", a rank dict, ("col", "low"/"high") to rank by another
 # column, or None for no highlight.
 ROWS: list[tuple] = [
-    ("Fit score", "fit_score", "int", "high"),
+    ("My requirements", "match_status", "text", None),
+    ("Personal score", "match_score", "int", None),
+    ("Requirements not met", "match_failures", "items", None),
+    ("Needs proof", "match_missing", "items", None),
+    ("Preferences", "match_preferred", "items", None),
+    ("Legacy fit score", "fit_score", "int", None),
     ("Price", "price", "money", "low"),
     ("Market estimate", "market_price", "money", None),
     ("vs. market", "deal_delta", "money", "low"),
@@ -58,6 +63,8 @@ ROWS: list[tuple] = [
 
 
 def _fmt(value, kind: str) -> str:
+    if kind == "items":
+        return " · ".join(value) if isinstance(value, (list, tuple)) and value else "—"
     if value is None or (isinstance(value, float) and pd.isna(value)) or value == "":
         return "—"
     if kind == "money":
