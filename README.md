@@ -66,8 +66,10 @@ can compare changes over time. An incomplete or failed scan never marks unseen i
 source dates. Rivian details also show the saved Rivian-seller benchmark. The calculations use recorded
 observations without additional API calls; a short history is not a prediction of the next reduction.
 
-The **Updated since last refresh** section on Inventory and Dashboard groups new listings, exact price changes,
-reported removals, and unconfirmed missing listings. It persists across browser reloads and app restarts.
+Inventory cards badge new listings, price changes with dollar amounts, and listing status changes. The **Updates**
+filter narrows results to those changes. A collapsed **Sold, removed & not seen** area on Inventory and Dashboard
+keeps recent source removals and all unavailable trucks accessible, including after later refreshes. Missing
+listings remain distinct from confirmed removals. These views use saved history without extra API calls.
 
 Equipment claims retain their source, confidence, and evidence. Unknown range, towing capacity, and warranty
 details stay unknown until evidence is supplied. The app does not replace an individual vehicle's towing rating

@@ -156,6 +156,7 @@ def table_view(df: pd.DataFrame, picks: set[int]) -> pd.DataFrame:
     """Display columns for the Inventory table (combined where two values belong together)."""
     view = common.add_photo_column(df)
     view["pick"] = view["vehicle_id"].isin(picks)
+    view["updates"] = [" · ".join(b["text"] for b in r.get("refresh_badges", [])) for r in view.to_dict("records")]
     view["name"] = [("★ " if r["favorite"] else "") + compare.vehicle_name(r)
                     + (" ⚠" if r["_near"] else "") + "  ›" for _, r in view.iterrows()]
     view["location_dist"] = [loc + (f" · {d:,.0f} mi" if d == d and d is not None else "")
@@ -185,12 +186,12 @@ def table_view(df: pd.DataFrame, picks: set[int]) -> pd.DataFrame:
 
 
 # pinned (stay put while you scroll right): ✓, photo, truck (click = details), sold by
-COLUMNS = ["pick", "photo", "name", "sold_by", "location_dist", "match_status", "match_score", "match_details", "seller_url", "link", "deal_label",
+COLUMNS = ["pick", "photo", "name", "sold_by", "updates", "location_dist", "match_status", "match_score", "match_details", "seller_url", "link", "deal_label",
            "price_text", "adjusted_text", "adjust_note",
            "est_monthly", "transport_edit", "market_text", "miles", "battery_range", "tow_capacity_lbs", "tow_src", "tow_conf", "battery_note", "motor_edit",
            "warranty_ends", "warranty_left", "subframe_label", "notes", "days_listed", "price_drops", "leverage", "generation", "color",
            "flags", "history_report_url", "find_seller_url", "status", "first_seen", "vin", "vehicle_id", "listing_id"]
-LABELS = {"name": "Truck", "sold_by": "Sold by", "location_dist": "Location",
+LABELS = {"name": "Truck", "sold_by": "Sold by", "updates": "Updates", "location_dist": "Location",
           "match_status": "My requirements", "match_score": "Personal score", "match_details": "Match details",
           "seller_url": "Seller listing", "link": "Link", "deal_label": "Deal", "adjusted_text": "Adjusted price",
           "adjust_note": "Adjustments", "price_text": "Price", "est_monthly": "Est. /mo",
@@ -216,6 +217,7 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
                                               help="Click for full details · ★ favorite · ⚠ near miss (a little over "
                                                    "your max price or miles)"),
         "sold_by": st.column_config.TextColumn("Sold by", width="medium", pinned=True),
+        "updates": st.column_config.TextColumn("Updates", width="medium", help="Recorded changes from the latest refresh and subsequent updates."),
         "location_dist": st.column_config.TextColumn("Location", width=190, help="Straight-line distance from your ZIP"),
         "match_status": st.column_config.TextColumn("My requirements", width="medium"),
         "match_score": st.column_config.ProgressColumn("Personal score", min_value=0, max_value=100, format="%d",
@@ -269,11 +271,13 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Inventory")
-    refresh_changes.render(c, s)
-    inv = common.inventory(s)
+    refresh = queries.refresh_changes(c)
+    refresh_changes.render(c, s, refresh)
+    inv = queries.attach_refresh_badges(common.inventory(s), refresh)
     add_truck.add_truck_panel(inv)
     if inv.empty:
         st.info("No trucks yet. Press **Run Search** in the sidebar, or add one above.")
+        refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
         return
 
     if "inv_filters" not in st.session_state:
@@ -306,6 +310,9 @@ def render() -> None:
     n_hidden = int(inv["hidden"].sum())
     with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
         sort = st.selectbox("Sort by", queries.SORT_OPTIONS, key="inv_sort", width=230)
+        updates = st.selectbox("Updates", ["All trucks", "Changed since refresh", "New / new source", "Price changes",
+                                           "Listing status changes"], key="inv_updates", width=230,
+                               help="Filter recorded changes from the latest refresh and later updates. Other filters still apply. Unavailable trucks are below the results.")
         f["favorites_only"] = st.toggle("★ Favorites only", f.get("favorites_only", False))
         f["hidden_only"] = st.toggle(f"🚫 Hidden ({n_hidden})", False, key="inv_hidden_only",
                                       help="Only trucks marked Not interested. Select and Restore, or restore from the truck's details.")
@@ -331,8 +338,14 @@ def render() -> None:
             else:
                 st.info(common.md(f"Found: {common.vehicle_label(r)} — hidden by your filters: " + "; ".join(why)))
         df = df.assign(_near=False)
+        if updates != "All trucks":
+            st.caption("Exact VIN and listing-link lookups also include trucks outside the Updates filter.")
     else:
         df = queries.apply_filters(inv, f, search)
+        categories = {"All trucks": [], "Changed since refresh": ["new", "price", "removed", "missing"],
+                      "New / new source": ["new"], "Price changes": ["price"],
+                      "Listing status changes": ["removed", "missing"]}
+        df = queries.filter_refresh_changes(df, categories[updates])
         in_filters = set(queries.apply_filters(inv, strict, search)["vehicle_id"])
         df = df.assign(_near=~df["vehicle_id"].isin(in_filters))
     df = queries.sort_inventory(df, sort)
@@ -344,6 +357,9 @@ def render() -> None:
     st.caption(f"Showing **{len(df)}** of {len(inv)} trucks" + (f" (incl. {near} near miss{'es' if near != 1 else ''}, "
                                                                "marked ⚠)" if near else "") + hint)
     if df.empty:
+        if not lookup:
+            st.info("No trucks match these filters. Unavailable trucks are listed below.")
+        refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
         return
 
     picks = set(st.session_state.get(SELECTED, set())) & set(inv["vehicle_id"])
@@ -365,6 +381,7 @@ def render() -> None:
     csv["Truck"] = csv["Truck"].str.replace(r"\s*›$", "", regex=True)
     st.download_button("Download this view as CSV", csv.to_csv(index=False), file_name="rivian_inventory_view.csv",
                        mime="text/csv")
+    refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
     if st.session_state.get("dialog_vid"):
         vid = int(st.session_state["dialog_vid"])
         hit = df[df["vehicle_id"] == vid]

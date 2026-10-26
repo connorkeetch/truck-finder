@@ -15,12 +15,14 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Dashboard")
-    refresh_changes.render(c, s)
+    refresh = queries.refresh_changes(c)
+    refresh_changes.render(c, s, refresh)
 
-    inv = common.inventory(s)
+    inv = queries.attach_refresh_badges(common.inventory(s), refresh)
     if inv.empty:
         st.info("No vehicles yet. Add an Auto.dev API key in **Settings → API credentials** and press **Run Search**, "
                 "or press Run Search now to load clearly-labeled **synthetic demo data** and explore the app.")
+        refresh_changes.render_retired(c, s, inv, refresh, key="dash_retired")
         return
     matching = queries.apply_filters(inv, s["filters"])
 
@@ -67,6 +69,7 @@ def render() -> None:
                                                  "deal_label", "miles", "battery", "motor", "tonneau", "warranty",
                                                  "distance_mi", "est_monthly", "seller_url", "found_on", "favorite",
                                                  "hidden", "vehicle_id"]].copy()
+            show.insert(2, "updates", [" · ".join(b["text"] for b in badges) for badges in top["refresh_badges"]])
             show["tonneau"] = show["tonneau"].map(lambda t: f"{common.TONNEAU_ICON.get(t, '')} {t.replace('_', ' ')}")
             ev = st.dataframe(
                 show, hide_index=True, on_select="rerun", selection_mode="multi-row", key=common.table_key("dash_top"),
@@ -74,6 +77,7 @@ def render() -> None:
                 column_config={
                     "photo": st.column_config.ImageColumn("Photo", width=int(row_h * 4 / 3)),
                     "sold_by": st.column_config.TextColumn("Sold by", width="medium"),
+                    "updates": st.column_config.TextColumn("Updates", width="medium"),
                     "favorite": None, "hidden": None,
                     "match_status": st.column_config.TextColumn("My requirements", width="medium"),
                     "match_score": st.column_config.ProgressColumn("Personal score", min_value=0, max_value=100, format="%d"),
@@ -143,3 +147,4 @@ def render() -> None:
                            if isinstance(r.last_success_at, str) else ""), unsafe_allow_html=True)
             if isinstance(r.last_error, str) and r.last_error:
                 st.caption(f"⚠️ {r.last_error}")
+    refresh_changes.render_retired(c, s, inv, refresh, key="dash_retired")

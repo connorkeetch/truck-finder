@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+from math import isfinite
 import sqlite3
 from collections import defaultdict
 
@@ -654,6 +655,107 @@ def refresh_changes(conn: sqlite3.Connection) -> dict:
         events["price_delta"] = (events["new_price"] - events["old_price"]).where(events["category"].eq("price"))
         events["update_origin"] = events["run_id"].map(lambda rid: "Refresh" if rid == run["id"] else "After refresh")
     return {"run": run, "events": events}
+
+
+def _refresh_number(value) -> float | None:
+    try:
+        number = float(value)
+        return number if not isinstance(value, bool) and isfinite(number) and number > 0 else None
+    except (TypeError, ValueError, OverflowError):
+        return None
+
+
+def _refresh_text(value) -> str:
+    return "" if value is None or pd.isna(value) else str(value)
+
+
+def _refresh_money(value: float) -> str:
+    return f"${value:,.0f}" if value.is_integer() else f"${value:,.2f}"
+
+
+def attach_refresh_badges(df: pd.DataFrame, refresh_result: dict) -> pd.DataFrame:
+    """Attach recorded-window badges without inferring changes from current listing state."""
+    out = df.copy()
+    out["refresh_categories"] = [[] for _ in range(len(out))]
+    out["refresh_badges"] = [[] for _ in range(len(out))]
+    out["refresh_note"] = ""
+    run, events = refresh_result.get("run"), refresh_result.get("events")
+    if out.empty or run is None or not isinstance(events, pd.DataFrame) or events.empty:
+        return out
+    categories = {"new_listing": "new", "new_source_for_vin": "new", "price_drop": "price",
+                  "price_increase": "price", "provider_removed": "removed", "marked_removed": "removed",
+                  "disappeared": "missing"}
+    ordered = events.copy()
+    ordered["_order"] = pd.to_numeric(ordered.get("id", pd.Series(index=ordered.index, dtype=float)), errors="coerce")
+    ordered["_at"] = pd.to_datetime(ordered.get("created_at", pd.Series(index=ordered.index, dtype=object)),
+                                      errors="coerce", utc=True)
+    ordered = ordered.sort_values(["_order", "_at"], kind="stable")
+    by_vehicle = defaultdict(list)
+    for event in ordered.to_dict("records"):
+        if event.get("event_type") in categories and _refresh_number(event.get("vehicle_id")) is not None:
+            by_vehicle[_refresh_number(event["vehicle_id"])].append(event)
+
+    def detail(event, message):
+        source = _refresh_text(event.get("source")) or source_label(_refresh_text(event.get("source_key"))) or "Source listing"
+        origin = _refresh_text(event.get("update_origin")) or (
+            "Refresh" if _refresh_number(event.get("run_id")) == _refresh_number(run.get("id")) else "After refresh")
+        return " · ".join(filter(None, [f"{source}: {message}", origin, _refresh_text(event.get("url"))]))
+
+    all_categories, all_badges, all_notes = [], [], []
+    for row in out.to_dict("records"):
+        changes = by_vehicle.get(_refresh_number(row.get("vehicle_id")), [])
+        badges = []
+        new = [event for event in changes if event["event_type"] in ("new_listing", "new_source_for_vin")]
+        if new:
+            first = next((event for event in new if event["event_type"] == "new_listing"), new[-1])
+            is_new = first["event_type"] == "new_listing"
+            badges.append({"text": "New" if is_new else "New source", "kind": "new" if is_new else "new_source",
+                           "detail": detail(first, "first seen in this app" if is_new else "new source for a known vehicle")})
+        prices = [event for event in changes if categories[event["event_type"]] == "price"]
+        if prices:
+            primary = _refresh_number(row.get("listing_id"))
+            chosen = [event for event in prices if primary is not None and _refresh_number(event.get("listing_id")) == primary]
+            if not chosen:
+                latest = prices[-1]
+                listing_id = _refresh_number(latest.get("listing_id"))
+                chosen = [event for event in prices if listing_id is not None and
+                          _refresh_number(event.get("listing_id")) == listing_id] or [latest]
+            first, last = chosen[0], chosen[-1]
+            old = _refresh_number(first.get("old_value", first.get("old_price")))
+            new_price = _refresh_number(last.get("new_value", last.get("new_price")))
+            text, kind, message = "Price changed", "price", "price change recorded; before/after price unavailable"
+            if old is not None and new_price is not None:
+                delta = new_price - old
+                message = f"{_refresh_money(old)} → {_refresh_money(new_price)}"
+                if delta:
+                    text = f"Price {'down' if delta < 0 else 'up'} {_refresh_money(abs(delta))}"
+                    kind = "price_down" if delta < 0 else "price_up"
+            badges.append({"text": text, "kind": kind, "detail": detail(last, message)})
+        for category, types, text in (("removed", ("provider_removed", "marked_removed"), "Removed"),
+                                       ("missing", ("disappeared",), "Not seen")):
+            selected = [event for event in changes if event["event_type"] in types]
+            if selected:
+                active = _refresh_number(row.get("active_listings")) is not None or _refresh_text(row.get("status")) == "active"
+                label = "Source removed" if category == "removed" and active else text
+                notes = [detail(event, (_refresh_text(event.get("new_value")) or "listing removed") if category == "removed"
+                                else "not seen in a complete search; a sale is unconfirmed") for event in selected]
+                badges.append({"text": label, "kind": category, "detail": " | ".join(dict.fromkeys(notes))})
+        all_categories.append([category for category in ("new", "price", "removed", "missing")
+                               if any(categories[event["event_type"]] == category for event in changes)])
+        all_badges.append(badges)
+        all_notes.append(" | ".join(badge["detail"] for badge in badges))
+    out["refresh_categories"], out["refresh_badges"], out["refresh_note"] = all_categories, all_badges, all_notes
+    return out
+
+
+def filter_refresh_changes(df: pd.DataFrame, selected: list[str]) -> pd.DataFrame:
+    """Keep any selected recorded-change category; an empty selection keeps all rows."""
+    if not selected or df.empty:
+        return df
+    if "refresh_categories" not in df:
+        return df.iloc[0:0]
+    wanted = set(selected)
+    return df[df["refresh_categories"].map(lambda categories: isinstance(categories, list) and bool(wanted.intersection(categories)))]
 
 
 def source_status(conn: sqlite3.Connection) -> pd.DataFrame:

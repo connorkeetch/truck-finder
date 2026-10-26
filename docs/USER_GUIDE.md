@@ -29,20 +29,24 @@ The other pages are under **More** in the sidebar.
 
 ## Updated since last refresh
 
-Inventory and Dashboard show changes found in the latest **Run Search**, plus updates recorded afterward.
-Reloading the browser or reopening the app keeps this history visible; the next completed search starts a new
-refresh summary.
+Inventory cards show badges for changes found in the latest **Run Search**, plus updates recorded afterward:
+**New**, **New source**, **Price down / up $…**, **Source removed**, or **Not seen**. A price badge shows the net
+change on one source listing within that refresh window; mirrored listings are not added together. Its details
+identify the source and before/after prices. Table view and CSV exports include an **Updates** column.
 
-- **New listings** includes newly discovered vehicles and new source listings for vehicles already tracked.
-- **Price changes** shows the old price, new price, and the exact dollar increase or decrease for that listing.
-- **Sold or removed** shows provider-reported removals and listings you marked sold or removed.
-- **Not seen** means a listing was absent from a complete scan. It does not confirm a sale, and another source
-  may still have an active listing for the same vehicle.
+Use the **Updates** filter to show only changed trucks, new listings, price changes, or listing status changes.
+Your other Inventory filters still apply. An exact VIN or listing-link lookup includes matches outside the
+Updates filter. Reloading or reopening the app keeps these badges; the next completed search starts a new window.
 
-This section includes changes outside your normal inventory filters so a price increase or removal cannot hide
-itself. Source links and current listing status identify which listing changed. The first search establishes a
-baseline: “new” means first discovered by this app, rather than newly advertised by the seller. Incomplete or
-failed searches are labeled and never establish that unseen listings were sold.
+The collapsed **Sold, removed & not seen** area below the results stays available even when no active trucks
+match your filters. **Recent status changes** identifies each source listing that was removed or not seen.
+**All unavailable trucks** keeps trucks with no active listings accessible after later refreshes, including hidden
+trucks. Ordinary Inventory filters do not hide this area; your demo-data preference still applies.
+
+**Not seen** means absent from a complete scan, with a sale unconfirmed. Another source may still list the same
+truck as active. **Sold or removed (reported)** means the provider reported removal or you marked it removed.
+The first search establishes a baseline: “new” means first discovered by this app, rather than newly advertised
+by the seller. Incomplete or failed searches are labeled and never establish that unseen listings were sold.
 
 ## Dashboard
 

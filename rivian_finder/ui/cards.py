@@ -107,6 +107,8 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
         out.append({
             "vid": int(r["vehicle_id"]), "photo": r.get("photo") or "",
             "title": compare.vehicle_name(r),
+            "refresh_badges": r.get("refresh_badges") if isinstance(r.get("refresh_badges"), list) else [],
+            "refresh_note": r.get("refresh_note") or "",
             "fav": bool(r.get("favorite")), "selected": int(r["vehicle_id"]) in picks,
             "price": _money(yours if yours == yours and yours else price),
             "list_price": _money(price) if yours == yours and yours and price and yours < price else "",
@@ -202,6 +204,11 @@ svg.i { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2;
 .chip.warn { background:rgba(227,179,65,.15); color:#f0c95c; border-color:rgba(227,179,65,.4); }
 .chip.note { background:rgba(79,163,247,.12); color:#9ccaf9; border-color:rgba(79,163,247,.35); }
 .chip.muted { color:#9aa0a6; }
+.refresh .chip { padding:3px 8px; font-size:12px; font-weight:600; overflow-wrap:anywhere; }
+.refresh-new, .refresh-new_source { background:rgba(79,163,247,.15); color:#9ccaf9; border-color:rgba(79,163,247,.45); }
+.refresh-price_down { background:rgba(46,160,67,.18); color:#9be9a8; border-color:rgba(46,160,67,.5); }
+.refresh-price_up, .refresh-missing { background:rgba(227,179,65,.15); color:#f0c95c; border-color:rgba(227,179,65,.4); }
+.refresh-removed { background:rgba(229,83,75,.15); color:#ffb1ab; border-color:rgba(229,83,75,.45); }
 .notes { color:#b8bcc2; font-style:italic; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .links { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:auto; padding-top:2px; font-size:12px; }
 .links a, .links button { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0 4px; border:0;
@@ -230,6 +237,10 @@ const it = (n, text, title) => text ? `<span class="it" title="${esc(title || ''
 function card(c) {
   const photo = safeUrl(c.photo) ? `<img loading="lazy" src="${safeUrl(c.photo)}" alt="">` : '<div class="noimg">no photo</div>';
   const chips = (c.chips || []).map(([t, k]) => `<span class="chip ${esc(k)}">${esc(t)}</span>`).join('');
+  const refresh = (c.refresh_badges || []).filter(b => b && b.text).map(b => {
+    const kind = ['new', 'new_source', 'price_down', 'price_up', 'price', 'removed', 'missing'].includes(b.kind) ? b.kind : 'note';
+    return `<span class="chip refresh-${kind}" role="note" title="${esc(b.detail || b.text)}" aria-label="${esc([b.text, b.detail].filter(Boolean).join(': '))}">${esc(b.text)}</span>`;
+  }).join('');
   const link = (u, t) => safeUrl(u) ? `<a href="${safeUrl(u)}" target="_blank" rel="noopener noreferrer">${esc(t)} ↗</a>` : '';
   return `<div class="card${c.selected ? ' selected' : ''}" data-vid="${c.vid}" data-name="${esc(c.title)}">
     <div class="photo"><button type="button" class="photo-open" data-act="open" aria-label="Open details for ${esc(c.title)}">${photo}</button>
@@ -241,6 +252,7 @@ function card(c) {
           aria-label="${c.fav ? 'Remove' : 'Add'} ${esc(c.title)} ${c.fav ? 'from' : 'to'} favorites"
           title="${c.fav ? 'Remove from favorites' : 'Add to favorites'}">${c.fav ? '★' : '☆'}</button>
         <button type="button" class="title" data-act="open">${esc(c.title)}</button></div>
+      ${refresh ? `<div class="chips refresh" role="group" aria-label="Updates since last refresh" title="${esc(c.refresh_note)}">${refresh}</div>` : ''}
       <div class="price">
         <span class="tag" style="background:${esc(c.deal_color)}" title="${esc(c.deal)}">${icon('tag')}${esc(c.price)}</span>
         ${c.list_price ? `<span class="list" title="List price before your discount">${esc(c.list_price)}</span>` : ''}
