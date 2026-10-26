@@ -7,8 +7,25 @@ endpoint is public. Missing login secrets stop startup.
 
 ## Service configuration
 
-Connect your own GitHub repository to one Railway service. `railway.toml` selects the Dockerfile and health
-check. Attach one persistent volume at `/data`; the app stores its SQLite database, photos, backups, exports,
+Connect your own GitHub repository to one Railway service. Railway detects the repository's root `Dockerfile`.
+Save these settings on the service's **Settings** page before deploying:
+
+| Setting | Value |
+|---|---|
+| Dockerfile path | `Dockerfile` |
+| Healthcheck path | `/_stcore/health` |
+| Healthcheck timeout | `120` seconds |
+| Restart policy | `On Failure` |
+| Maximum restart retries | `10` |
+| Replicas | `1` |
+| Railway Config File | Leave blank |
+
+These values live in Railway's service settings. The repository does not use the deprecated
+`railway.toml`/`railway.json` configuration format or require a Railway IaC SDK. If migrating an older
+deployment, save the service settings before clearing its Railway Config File path; legacy file values do
+not populate those settings automatically. See [Railway's configuration guidance](https://docs.railway.com/config-as-code).
+
+Attach one persistent volume at `/data`; the app stores its SQLite database, photos, backups, exports,
 logs and saved preferences there. Keep one replica. The repository and image exclude working inventory,
 photos and credentials.
 

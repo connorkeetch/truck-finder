@@ -12,7 +12,6 @@ import socket
 import subprocess
 import threading
 import time
-import tomllib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
 import pytest
@@ -20,18 +19,19 @@ import pytest
 ROOT = Path(__file__).resolve().parents[1]
 
 
-def test_railway_uses_proxy_health_and_one_durable_database():
-    config = tomllib.loads((ROOT / "railway.toml").read_text(encoding="utf-8"))
-    assert config["build"]["builder"] == "DOCKERFILE"
-    assert config["deploy"]["healthcheckPath"] == "/_stcore/health"
-    assert config["deploy"]["numReplicas"] == 1
+def test_docker_image_uses_private_proxy_and_durable_runtime_storage():
     dockerfile = (ROOT / "Dockerfile").read_text(encoding="utf-8")
     assert "FROM caddy:2.11.7-alpine AS caddy" in dockerfile
     assert "RIVIAN_FINDER_CLOUD=1" in dockerfile
     assert "RIVIAN_FINDER_DATA_DIR=/data" in dockerfile
     assert "tzdata" in dockerfile
+    assert 'ENTRYPOINT ["/bin/bash", "/app/docker-entrypoint.sh"]' in dockerfile
+    assert "EXPOSE 8080" in dockerfile
     assert "EXPOSE 8501" not in dockerfile
-    assert (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()[0] == "**"
+    assert "COPY . " not in dockerfile
+    context = (ROOT / ".dockerignore").read_text(encoding="utf-8").splitlines()
+    assert context[0] == "**"
+    assert not any(line.startswith(("!data", "!static", "!.env")) for line in context)
 
 
 @pytest.mark.parametrize("missing", ["TRUCK_FINDER_PASSWORD_HASH", "TRUCK_FINDER_PROXY_SECRET"])
