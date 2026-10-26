@@ -301,6 +301,26 @@ def classify_tonneau(text: str | None, structured: bool = False) -> tuple[str, s
     return "unknown", None, "low"
 
 
+# Classified sites (KSL and others) show the title as a labeled field: "Title Type: Rebuilt/Reconstructed".
+_BRANDED_TITLE_LABEL_RE = re.compile(
+    r"\btitle\s*(?:type|status|brand)?\s*[:\-]?\s*(?:rebuilt|reconstructed|salvage|branded|lemon|flood|buyback|junk)\b",
+    re.I)
+_CLEAN_TITLE_LABEL_RE = re.compile(r"\btitle\s*(?:type|status)?\s*[:\-]?\s*clean\b", re.I)
+_PRIVATE_SELLER_RE = re.compile(
+    r"\bfor\s+sale\s+by\s+owner\b|\bfsbo\b|\bprivate\s+(?:seller|party)\b"
+    r"|\bseller\s*type\s*[:\-]?\s*(?:private|owner|individual)\b", re.I)
+_DEALER_SELLER_RE = re.compile(r"\bseller\s*type\s*[:\-]?\s*(?:dealer|dealership|business)\b|\bdealer\s+licen[cs]e\b",
+                               re.I)
+
+
+def parse_seller_type(text: str | None) -> str | None:
+    """'private' or 'dealer' when the listing says so ("For Sale By Owner", "Seller Type: Dealer"), else None.
+    Only explicit wording counts: private ads often mention a dealer ("dealer serviced")."""
+    hits = [(m.start(), kind) for kind, pat in (("private", _PRIVATE_SELLER_RE), ("dealer", _DEALER_SELLER_RE))
+            if (m := pat.search(text or ""))]
+    return min(hits)[1] if hits else None
+
+
 def extract_attributes(text: str | None, method: str, confidence: str = "low",
                        structured: bool = False, make: str | None = None,
                        model: str | None = None) -> list[AttributeClaim]:
@@ -366,11 +386,13 @@ def extract_attributes(text: str | None, method: str, confidence: str = "low",
         claims.append(AttributeClaim("warranty_expiration", _date_iso(m.group(1)), confidence, method,
                                      evidence=_snippet(text, m)))
 
-    m = re.search(r"\b(?:salvage|rebuilt|branded|flood|lemon)\s+title\b", text, re.I)
+    m = (re.search(r"\b(?:salvage|rebuilt|reconstructed|branded|flood|lemon)\s+title\b", text, re.I)
+         or _BRANDED_TITLE_LABEL_RE.search(text))
     if m:
         claims.append(AttributeClaim("title_status", "branded", confidence, method, evidence=_snippet(text, m)))
     else:
-        m = re.search(r"\bclean\s+(?:carfax\s+|autocheck\s+)?title\b", text, re.I)
+        m = (re.search(r"\bclean\s+(?:carfax\s+|autocheck\s+)?title\b", text, re.I)
+             or _CLEAN_TITLE_LABEL_RE.search(text))
         if m:
             claims.append(AttributeClaim("title_status", "clean", confidence, method, evidence=_snippet(text, m)))
     m = re.search(r"\b(?:no|zero|0)\s+(?:reported\s+)?accidents?(?:\s+reported)?\b|\baccident[\s\-]free\b", text, re.I)
@@ -395,9 +417,16 @@ def extract_attributes(text: str | None, method: str, confidence: str = "low",
 
 _CITY_STATE_ZIP_RE = re.compile(r"\b([A-Z][a-zA-Z.\- ]{1,30}),\s*(" + "|".join(US_STATES) + r")\b(?:\s+(\d{5}))?")
 _STATE_NAMES = {
-    "utah": "UT", "idaho": "ID", "nevada": "NV", "arizona": "AZ", "colorado": "CO", "wyoming": "WY",
-    "california": "CA", "oregon": "OR", "washington": "WA", "new mexico": "NM", "texas": "TX",
-    "montana": "MT", "illinois": "IL", "florida": "FL", "georgia": "GA", "new york": "NY",
+    "alabama": "AL", "alaska": "AK", "arizona": "AZ", "arkansas": "AR", "california": "CA", "colorado": "CO",
+    "connecticut": "CT", "delaware": "DE", "district of columbia": "DC", "washington dc": "DC", "florida": "FL",
+    "georgia": "GA", "hawaii": "HI", "idaho": "ID", "illinois": "IL", "indiana": "IN", "iowa": "IA", "kansas": "KS",
+    "kentucky": "KY", "louisiana": "LA", "maine": "ME", "maryland": "MD", "massachusetts": "MA", "michigan": "MI",
+    "minnesota": "MN", "mississippi": "MS", "missouri": "MO", "montana": "MT", "nebraska": "NE", "nevada": "NV",
+    "new hampshire": "NH", "new jersey": "NJ", "new mexico": "NM", "new york": "NY", "north carolina": "NC",
+    "north dakota": "ND", "ohio": "OH", "oklahoma": "OK", "oregon": "OR", "pennsylvania": "PA",
+    "rhode island": "RI", "south carolina": "SC", "south dakota": "SD", "tennessee": "TN", "texas": "TX",
+    "utah": "UT", "vermont": "VT", "virginia": "VA", "washington": "WA", "west virginia": "WV", "wisconsin": "WI",
+    "wyoming": "WY",
 }
 
 
@@ -454,12 +483,16 @@ SITE_PATTERNS: list[tuple[str, re.Pattern]] = [
     ("truecar", re.compile(r"truecar\.com/used-cars-for-sale/listing/([A-HJ-NPR-Z0-9]{17})", re.I)),
     ("rivian", re.compile(r"rivian\.com/.*?(?:configurations|pre-owned|inventory|r1t)[^\s\"']*?([A-HJ-NPR-Z0-9]{17})?", re.I)),
     ("autotempest", re.compile(r"autotempest\.com/(?:details|listing)/([^\s/?\"']+)", re.I)),
+    # XenForo thread links: /forum/threads/<slug>.<id>/ with optional /post-<n>, /unread, /page-<n> after it
+    ("rivianforums", re.compile(r"rivianforums\.com/(?:forum/)?threads/(?:[^/?#\s\"']*\.)?(\d{3,})", re.I)),
+    ("roamer", re.compile(r"rivianroamer\.com/inventory/([A-Za-z0-9\-]{4,})", re.I)),
 ]
 
 SITE_DOMAINS = {
     "autotrader": "autotrader.com", "cars_com": "cars.com", "cargurus": "cargurus.com", "carmax": "carmax.com",
     "carvana": "carvana.com", "ksl": "ksl.com", "facebook": "facebook.com", "truecar": "truecar.com",
-    "rivian": "rivian.com", "autotempest": "autotempest.com",
+    "rivian": "rivian.com", "autotempest": "autotempest.com", "rivianforums": "rivianforums.com",
+    "roamer": "rivianroamer.com",
 }
 
 

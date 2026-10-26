@@ -102,6 +102,10 @@ To try it, use the synthetic emails in [`examples/emails/`](../examples/emails/)
 If an email gives you zero listings, it probably only has tracking links or images. Open the listing from the
 email and use [Paste a listing](#paste-a-listing) instead.
 
+**RivianForums**: sign in, open **Rivians / Vehicles For Sale**, choose **Watch** and turn on email
+notifications. Each new thread then arrives as an email you can import here. Wanted-to-buy posts and SOLD threads
+start unticked.
+
 ## Paste a listing
 
 For a single listing you're looking at in your browser:
@@ -126,6 +130,31 @@ Values parsed from free text are marked **low** confidence until you verify them
 **Rivian Pre-Owned pages** are recognized automatically. You can paste several at once, and they save battery,
 motor, tonneau and warranty dates as verified values.
 
+**KSL ads**: "For Sale By Owner" or "Seller Type: Dealer" sets the seller type, and a "Title Type" of
+Rebuilt/Reconstructed or Salvage is recorded as a branded title. Check the title before you get attached to a
+cheap truck.
+
+**RivianForums threads**: paste the thread's URL and the whole page. Only the title and the first post are read,
+because replies often quote other trucks' prices. For example, from:
+
+```text
+Utah - For Sale: 2022 R1T Launch Green, Quad, 31k miles; $54,500
+Thread starter trailrunner42 Start date Oct 20, 2026
+…
+#1
+Selling my 2022 R1T Adventure … Original MSRP was $89,000.
+…
+#2
+Nice truck! Mine was $49,900 with 40k miles …
+```
+
+you get $54,500 (from the title, not the MSRP), 31,000 miles, Utah, a private seller named
+"trailrunner42 (RivianForums)", and nothing from reply #2. A thread marked SOLD is saved as sold, which still
+helps price comparisons. A wanted-to-buy (WTB) post shows a warning.
+
+**Rivian Roamer pages can't be pasted.** Roamer's terms forbid feeding its data into other apps. Open the truck's
+rivian.com listing from Roamer and paste that page instead.
+
 ## Browser extension (optional)
 
 The extension does the same thing as pasting, with one click. It runs only when you click it, and it only reads
@@ -136,8 +165,9 @@ the text you've highlighted, the page title and the URL.
 3. On a listing, highlight the details, click the extension → **Send selection**.
 4. Review it in **More → Sources → Assisted capture → Browser extension queue**.
 
-The app must be open in a browser tab for the extension to reach it. Facebook Marketplace is blocked on
-purpose. Use manual entry for those listings.
+The app must be open in a browser tab for the extension to reach it. Facebook Marketplace and Rivian Roamer are
+blocked on purpose. Use manual entry for Facebook, and the rivian.com listing for Roamer trucks. After updating
+the extension folder, press **Reload** on `chrome://extensions`.
 
 ## From a script
 

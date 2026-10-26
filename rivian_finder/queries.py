@@ -46,7 +46,7 @@ SOURCE_LABELS = {
     "autodev": "Auto.dev", "marketcheck": "MarketCheck", "demo": "DEMO", "rivian": "Rivian", "carmax": "CarMax",
     "carvana": "Carvana", "autotrader": "AutoTrader", "autotempest": "AutoTempest", "ksl": "KSL",
     "facebook": "Facebook", "cars_com": "Cars.com", "cargurus": "CarGurus", "truecar": "TrueCar",
-    "dealer": "Dealer site", "other": "Other", "nhtsa_vpic": "NHTSA vPIC", "vin_rule": "VIN rule",
+    "rivianforums": "RivianForums", "roamer": "Rivian Roamer", "dealer": "Dealer site", "other": "Other", "nhtsa_vpic": "NHTSA vPIC", "vin_rule": "VIN rule",
     "listing_year": "Listed year", "user": "You", "marketcheck_decode": "MarketCheck decode",
     "epa_match": "EPA rating match",
 }

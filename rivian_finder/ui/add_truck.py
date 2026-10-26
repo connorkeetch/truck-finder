@@ -6,7 +6,7 @@ import streamlit as st
 
 from .. import pipeline, queries, services
 from ..extract import extract_attributes, parse_location
-from ..importers import capture, email_alerts, rivian_page
+from ..importers import capture, email_alerts, forum_listing, rivian_page
 from ..models import NormalizedListing
 from ..sources.base import search_targets
 from ..vin import clean_vin, validate_vin
@@ -61,26 +61,43 @@ def paste_block(prefix: str) -> None:
     st.caption("On the listing page press Ctrl+A, Ctrl+C, then paste here with the URL. Only the text you paste is "
                "read — the page is never fetched.")
     url = st.text_input("Listing URL", key=f"{prefix}_url")
-    blocked = bool(url and capture.capture_blocked(url))
+    blocked = capture.blocked_reason(url)
     if blocked:
-        st.warning("Facebook Marketplace: please type the details in **Manual** instead (Meta prohibits automated "
-                   "collection).")
+        st.warning(blocked)
     text = st.text_area("Listing text", height=160, key=f"{prefix}_text")
     pages = rivian_page.split_pages(text) if text else []
     if pages:
         rivian_block(prefix, pages, url if len(pages) == 1 else None)
         return
-    if st.button("Read pasted text", key=f"{prefix}_parse", disabled=blocked):
+    if forum_listing.is_forum_url(url):
+        st.caption("RivianForums thread: the title and first post are read; replies are ignored.")
+    if st.button("Read pasted text", key=f"{prefix}_parse", disabled=bool(blocked)):
         st.session_state[f"{prefix}_draft"] = capture.draft_from_text(text, url or None)
     draft = st.session_state.get(f"{prefix}_draft")
     if draft:
-        reason = capture.blank_draft_reason(draft)
-        if reason:
-            st.warning(reason)
+        draft_notes(draft)
         nl = listing_review_form(draft, f"{prefix}_form", "capture")
         if nl:
-            save_listings([nl], "capture")
+            save_draft(nl, draft, "capture")
             st.session_state.pop(f"{prefix}_draft", None)
+
+
+def draft_notes(draft: dict) -> None:
+    """Warnings about a parsed draft: nothing recognizable, or a forum thread that's sold or a wanted ad."""
+    reason = capture.blank_draft_reason(draft)
+    if reason:
+        st.warning(reason)
+    note = forum_listing.STATUS_NOTES.get(draft.get("forum_status"))
+    if note:
+        st.warning(note)
+
+
+def save_draft(nl: NormalizedListing, draft: dict, trigger: str) -> dict | None:
+    """Save a reviewed draft. A forum thread marked SOLD is recorded as sold right away."""
+    summary = save_listings([nl], trigger)
+    if summary and draft.get("forum_status") == "sold":
+        pipeline.mark_removed(common.conn(), summary["listing_ids"][0], "Forum thread is marked SOLD")
+    return summary
 
 
 def rivian_block(prefix: str, pages: list[str], url: str | None) -> None:
@@ -122,8 +139,8 @@ def manual_block(prefix: str) -> None:
 
 
 def email_block(prefix: str) -> None:
-    st.caption("Alert emails from AutoTrader, Cars.com, CarGurus, KSL, CarMax, Carvana… In Gmail: ⋮ → Download "
-               "message gives a .eml file. Or paste the email.")
+    st.caption("Alert emails from AutoTrader, Cars.com, CarGurus, KSL, CarMax, Carvana, and RivianForums watched-forum "
+               "notifications… In Gmail: ⋮ → Download message gives a .eml file. Or paste the email.")
     files = st.file_uploader("Alert emails (.eml)", type=["eml"], accept_multiple_files=True, key=f"{prefix}_eml")
     pasted = st.text_area("…or paste the email", height=100, key=f"{prefix}_emlpaste")
     if st.button("Read emails", key=f"{prefix}_emlparse"):
@@ -141,9 +158,10 @@ def email_block(prefix: str) -> None:
     found = st.session_state.get(f"{prefix}_found") or []
     if not found:
         return
-    st.write(f"Found **{len(found)}** listing link(s). Untick anything that isn't a supported EV truck, fix values, then save.")
+    st.write(f"Found **{len(found)}** listing link(s). Untick anything you don't want (wanted-to-buy posts and sold "
+             "forum threads start unticked), fix values, then save.")
     table = pd.DataFrame([{
-        "include": email_alerts.looks_like_truck(nl), "site": nl.source_key, "year": nl.year,
+        "include": email_alerts.worth_saving(nl), "site": nl.source_key, "year": nl.year,
         "make": nl.make or "", "model": nl.model or "", "title": nl.title or "",
         "price": nl.price, "miles": nl.miles, "vin": nl.vin or "",
         "location": ", ".join(x for x in (nl.city, nl.state) if x), "url": nl.url} for nl in found])
@@ -164,7 +182,10 @@ def email_block(prefix: str) -> None:
             nl.vin = row["vin"] or None
             nl.make, nl.model = row["make"] or None, row["model"] or None
             chosen.append(nl)
-        save_listings(chosen, "email_import")
+        summary = save_listings(chosen, "email_import")
+        for nl, listing_id in zip(chosen, (summary or {}).get("listing_ids", [])):
+            if nl.source_key == forum_listing.SITE and forum_listing.parse_title(nl.title)["status"] == "sold":
+                pipeline.mark_removed(common.conn(), listing_id, "Forum thread is marked SOLD")
         st.session_state.pop(f"{prefix}_found", None)
 
 

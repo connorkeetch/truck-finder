@@ -13,7 +13,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 
 from .. import db
-from .capture import MAX_TEXT, capture_blocked, enqueue
+from .capture import MAX_TEXT, blocked_reason, capture_blocked, enqueue
 
 log = logging.getLogger(__name__)
 MAX_BODY = 2_000_000
@@ -76,7 +76,8 @@ def make_handler(db_path: str | Path):
                 return
             url = str(payload.get("url") or "")[:2000]
             if capture_blocked(url):
-                self._send(422, {"error": "Capture is disabled for this site. Copy the details into the app manually."})
+                self._send(422, {"error": "Capture is disabled for this site. "
+                                          + (blocked_reason(url) or "").replace("**", "")})
                 return
             text = str(payload.get("text") or "")[:MAX_TEXT]
             title = str(payload.get("title") or "")[:500]

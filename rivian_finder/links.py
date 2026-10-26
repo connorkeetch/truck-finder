@@ -21,6 +21,7 @@ SELLER_DOMAINS = {
     "rivian.com": "Rivian (manufacturer)", "carmax.com": "CarMax", "carvana.com": "Carvana",
     "ksl.com": "KSL ad (private/dealer)", "facebook.com": "Facebook Marketplace ad", "craigslist.org": "Craigslist ad",
     "ebay.com": "eBay Motors listing", "vroom.com": "Vroom", "shift.com": "Shift",
+    "rivianforums.com": "RivianForums classified (owner)",
 }
 SELLER_PRIORITY = {"manufacturer": 0, "dealer": 1, "retailer": 1, "private": 2}
 

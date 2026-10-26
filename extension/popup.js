@@ -3,7 +3,13 @@
 // local app at 127.0.0.1. No background scripts, no navigation, no network requests to the website.
 
 const RECEIVER = "http://127.0.0.1:8765/capture";
-const BLOCKED = ["facebook.com", "messenger.com", "fb.com"]; // Meta prohibits automated collection: manual entry only
+// Sites whose terms forbid feeding their data into other apps, with what to do instead.
+const FACEBOOK_NOTE = "Capture is turned off for Facebook. Please type the details into Truck Finder → Sources → Manual entry.";
+const BLOCKED = {
+  "facebook.com": FACEBOOK_NOTE, "messenger.com": FACEBOOK_NOTE, "fb.com": FACEBOOK_NOTE,
+  "rivianroamer.com": "Capture is turned off for Rivian Roamer (its terms forbid it). Open the truck's rivian.com " +
+    "listing and capture that page instead. It has the VIN and build details.",
+};
 
 const statusEl = document.getElementById("status");
 const previewEl = document.getElementById("preview");
@@ -16,12 +22,14 @@ function show(msg, cls = "") {
   statusEl.style.display = "block";
 }
 
-function isBlocked(url) {
+// The reason capture is off for this page, or "" when it's allowed.
+function blockedReason(url) {
   try {
     const host = new URL(url).hostname.toLowerCase();
-    return BLOCKED.some((d) => host === d || host.endsWith("." + d));
+    const domain = Object.keys(BLOCKED).find((d) => host === d || host.endsWith("." + d));
+    return domain ? BLOCKED[domain] : "";
   } catch (e) {
-    return true;
+    return "This page can't be captured.";
   }
 }
 
@@ -51,9 +59,10 @@ async function init() {
     show("Open a listing page first.", "warn");
     return;
   }
-  if (isBlocked(tab.url)) {
+  const reason = blockedReason(tab.url);
+  if (reason) {
     sendBtn.disabled = copyBtn.disabled = true;
-    show("Capture is turned off for Facebook. Please type the details into Truck Finder → Sources → Manual entry.", "warn");
+    show(reason, "warn");
     return;
   }
   try {

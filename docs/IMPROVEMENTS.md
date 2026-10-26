@@ -78,6 +78,18 @@ Fix: compute the default and slider maximum from `date.today().year + 1`.
 Pasted text `Sold by: Sample Motors - St George, UT 84770` gives seller **and** city `Sample Motors - St George`.
 The `·` and `,` separators work. Fix in the seller/location parsing used by `importers/capture.draft_from_text()`.
 
+## Unverified email and page formats
+
+The KSL and RivianForums importers (October 2026) are tested against **synthetic** samples, because the real
+formats weren't available while building them:
+
+| What | Risk | Next step |
+|---|---|---|
+| KSL saved-search alert emails | Real emails may use tracking links that hide the listing address, which would give zero listings | Import one real KSL alert. If it fails, save a redacted copy as a test fixture and adjust `email_alerts.py`. |
+| KSL listing-page labels ("Title Type", "Seller Type") | A different label layout means the seller type or branded title isn't detected | Paste one real KSL ad and check the draft |
+| RivianForums watched-forum emails | The subject and link layout were modeled on XenForo's usual notification email | Import one real notification and compare with `tests/fixtures/synthetic_rivianforums_alert.eml` |
+| Forum threads whose title has no year, price or WTB | The title isn't found in a full-page paste, so price and miles come from the post | Fall back to the browser tab title, which the extension already sends |
+
 ## Leftovers from the Rivian-only days
 
 The app now supports any make/model, but some defaults still assume a Rivian R1T shopper near Draper, Utah.

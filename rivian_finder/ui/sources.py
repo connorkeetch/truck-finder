@@ -20,7 +20,12 @@ COVERAGE_NOTES = {
     "carvana": "Email alerts + assisted/manual. May also appear via MarketCheck.",
     "autotrader": "Email alerts + assisted/manual. Dealer stock often also appears via Auto.dev/MarketCheck.",
     "autotempest": "Meta-search: open results, then capture the original listing page.",
-    "ksl": "Email alerts + assisted/manual (KSL is Utah's biggest private-party market).",
+    "ksl": "Email alerts + assisted/manual (KSL is Utah's biggest private-party market). "
+           "Private sellers and title types such as Rebuilt/Reconstructed are picked up from the ad text.",
+    "rivianforums": "Watched-forum emails + paste (owner listings; only the first post is read). "
+                    "Its terms forbid automated access, so the app never visits the forum.",
+    "roamer": "Browse only. Roamer's terms forbid feeding its data into other apps, so its pages can't be "
+              "pasted or captured. Add the truck from its rivian.com listing instead.",
     "facebook": "Manual only. Meta prohibits automated collection; type or paste details yourself.",
     "cars_com": "Email alerts + assisted/manual.",
     "cargurus": "Email alerts + assisted/manual.",
@@ -161,12 +166,10 @@ def render() -> None:
                                 f"{common.local_time(item['received_at'])}</small>", unsafe_allow_html=True)
                     draft = capture.draft_from_text(item["text"] or "", item["url"] or None, item["title"] or None,
                                                     item["image_url"])
-                    reason = capture.blank_draft_reason(draft)
-                    if reason:
-                        st.caption(reason)
+                    add_truck.draft_notes(draft)
                     nl = listing_review_form(draft, f"capq_{item['id']}", "capture", show_claims=True)
                     if nl:
-                        summary = _save([nl], "capture")
+                        summary = add_truck.save_draft(nl, draft, "capture")
                         if summary:
                             capture.resolve_capture(c, item["id"], "saved", summary["listing_ids"][0])
                             st.rerun()

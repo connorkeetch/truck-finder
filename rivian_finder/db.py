@@ -64,6 +64,8 @@ SOURCE_SEED = [
     ("cars_com", "Cars.com", "site", 1),
     ("cargurus", "CarGurus", "site", 1),
     ("truecar", "TrueCar", "site", 1),
+    ("rivianforums", "RivianForums classifieds", "site", 1),
+    ("roamer", "Rivian Roamer (browse only)", "site", 1),
     ("dealer", "Independent dealer website", "site", 1),
     ("other", "Other / unknown site", "site", 1),
 ]
@@ -96,6 +98,21 @@ SAVED_SEARCH_SEED = [
      "Template."),
 ]
 
+# Saved searches added after the first release. Each group is inserted once, into new and existing workspaces;
+# one you delete stays deleted.
+ADDED_SAVED_SEARCHES = {
+    "2026-10-forums-roamer": [
+        ("RivianForums: Rivians / Vehicles For Sale", "rivianforums",
+         "https://www.rivianforums.com/forum/forums/rivians-vehicles-for-sale.62/",
+         "Owner classifieds. Sign in and Watch the forum with email notifications, then import those emails. "
+         "For one thread, copy the page into Add a truck → Paste listing (only the first post is read)."),
+        ("Rivian Roamer: pre-owned R1T", "roamer",
+         "https://rivianroamer.com/inventory?condition=PRE_OWNED_VEHICLE&model%5B%5D=R1T&region=US",
+         "Browse only: Roamer's terms forbid feeding its data into other apps. Its Atom feed works in your own "
+         "feed reader. To add a truck, open its rivian.com listing and paste Rivian's page."),
+    ],
+}
+
 
 def seed(conn: sqlite3.Connection) -> None:
     with conn:
@@ -104,12 +121,21 @@ def seed(conn: sqlite3.Connection) -> None:
                 "INSERT OR IGNORE INTO sources(key, name, kind, enabled) VALUES (?, ?, ?, ?)",
                 (key, name, kind, enabled),
             )
+        now = utcnow()
         if conn.execute("SELECT COUNT(*) FROM saved_searches").fetchone()[0] == 0:
-            now = utcnow()
             for name, source_key, url, notes in SAVED_SEARCH_SEED:
                 conn.execute(
                     "INSERT INTO saved_searches(name, source_key, url, notes, is_template, created_at)"
                     " VALUES (?, ?, ?, ?, 1, ?)",
+                    (name, source_key, url, notes, now),
+                )
+        for group, rows in ADDED_SAVED_SEARCHES.items():
+            done = conn.execute("INSERT OR IGNORE INTO preferences(key, value) VALUES (?, 'true')",
+                                (f"seed:{group}",)).rowcount
+            for name, source_key, url, notes in rows if done else []:
+                conn.execute(
+                    "INSERT INTO saved_searches(name, source_key, url, notes, is_template, created_at)"
+                    " VALUES (?, ?, ?, ?, 0, ?)",
                     (name, source_key, url, notes, now),
                 )
 

@@ -14,17 +14,20 @@ from urllib.parse import parse_qsl, unquote, urlsplit
 from bs4 import BeautifulSoup
 
 from ..extract import (SITE_DOMAINS, canonical_url, extract_attributes, identify_site, parse_location, parse_miles,
-                       parse_price, parse_truck_identity, parse_year)
+                       parse_price, parse_seller_type, parse_truck_identity, parse_year)
 from ..models import NormalizedListing
 from ..vin import find_vins
+from . import forum_listing
 
 _URL_RE = re.compile(r"https?://[^\s<>\"')\]]+", re.I)
 _REDIRECT_KEYS = ("url", "u", "redirect", "redirect_url", "target", "dest", "destination", "link", "r", "goto")
 SENDER_SITES = {
+    "rivianforums": "rivianforums",   # before "rivian", which it contains
     "autotrader": "autotrader", "cars.com": "cars_com", "cargurus": "cargurus", "carmax": "carmax",
     "carvana": "carvana", "ksl": "ksl", "rivian": "rivian", "autotempest": "autotempest", "truecar": "truecar",
     "facebook": "facebook", "facebookmail": "facebook",
 }
+_FORUM_POSTER_RE = re.compile(r"([\w.\-]{2,40})\s+(?:started|posted)\s+(?:a\s+)?(?:new\s+)?thread", re.I)
 
 
 def unwrap_url(url: str, depth: int = 0) -> str:
@@ -125,7 +128,8 @@ def card_photo(node) -> str | None:
     return None
 
 
-def _candidate(url: str, block: str, sender_site: str | None, subject: str) -> NormalizedListing:
+def _candidate(url: str, block: str, sender_site: str | None, subject: str,
+               link_text: str | None = None) -> NormalizedListing:
     site, listing_id = identify_site(url)
     if site in ("dealer", "other") and sender_site:
         site = sender_site if sender_site not in ("autotempest",) else site
@@ -139,15 +143,31 @@ def _candidate(url: str, block: str, sender_site: str | None, subject: str) -> N
     make, model = parse_truck_identity(block)
     title_m = re.search(r"\b20\d{2}\s+(?:(?:Rivian\s+)?R1T|(?:Ford\s+)?F[\s\-]*150\s+Lightning"
                         r"|(?:(?:Chevrolet|Chevy)\s+)?Silverado\s+EV|(?:GMC\s+)?Sierra\s+EV)[^$\n|•]{0,40}", block, re.I)
-    return NormalizedListing(
+    nl = NormalizedListing(
         source_key=site, import_method="email", source_listing_id=listing_id, url=url,
         vin=vins[0] if vins else None, year=parse_year(block), make=make,
         model=model, price=parse_price(block),
         miles=parse_miles(block), city=city, state=state, zip=zip_code, seller_name=seller,
+        seller_type=parse_seller_type(block),
         title=title_m.group(0).strip() if title_m else None, description=block[:2000],
         attributes=extract_attributes(block, f"Parsed from {site} alert email" + (f" ({subject[:60]})" if subject else ""),
                                       make=make, model=model),
     )
+    if site == forum_listing.SITE:
+        # The thread title is the ad's headline; the rest of the email is an excerpt and site boilerplate.
+        # Links like "View this thread" aren't titles, so fall back to the subject ("New thread …: <title>").
+        heading = next((t for t in (link_text, subject.split(": ", 1)[-1] if subject else None, nl.title)
+                        if forum_listing.looks_like_title(t)), None)
+        facts = forum_listing.parse_title(heading)
+        poster = _FORUM_POSTER_RE.search(block)
+        nl.title = facts["title"] or nl.title
+        nl.price = facts["price"] or nl.price
+        nl.miles = facts["miles"] if facts["miles"] is not None else nl.miles
+        nl.year = facts["year"] or nl.year
+        nl.state = nl.state or facts["state"]
+        nl.seller_type = "private"
+        nl.seller_name = poster.group(1) + forum_listing.SELLER_SUFFIX if poster else nl.seller_name
+    return nl
 
 
 def parse_alert(html: str | None = None, text: str | None = None, sender: str = "", subject: str = "") -> list[NormalizedListing]:
@@ -162,7 +182,7 @@ def parse_alert(html: str | None = None, text: str | None = None, sender: str = 
                 continue
             key = _dedupe_key(url)
             block, node = _card(a)
-            cand = _candidate(url, block, sender_site, subject)
+            cand = _candidate(url, block, sender_site, subject, a.get_text(" ", strip=True))
             cand.photo_url = card_photo(node)
             prev = found.get(key)
             # several links (photo, title, "view") usually point at one listing; keep the richest block
@@ -183,7 +203,8 @@ def parse_alert(html: str | None = None, text: str | None = None, sender: str = 
             for i, url in hits:
                 segment = lines if len(hits) == 1 else lines[prev + 1: i + 1]
                 block = " ".join(l.strip() for l in segment if l.strip())
-                found.setdefault(_dedupe_key(url), _candidate(url, block, sender_site, subject))
+                heading = next((l.strip() for l in segment if l.strip() and not _URL_RE.search(l)), None)
+                found.setdefault(_dedupe_key(url), _candidate(url, block, sender_site, subject, heading))
                 prev = i
     return list(found.values())
 
@@ -210,6 +231,13 @@ def looks_like_rivian(nl: NormalizedListing) -> bool:
 
 def looks_like_truck(nl: NormalizedListing) -> bool:
     return parse_truck_identity(f"{nl.make or ''} {nl.model or ''} {nl.title or ''} {nl.description or ''}")[1] is not None
+
+
+def worth_saving(nl: NormalizedListing) -> bool:
+    """Default for the 'Save?' box: a truck for sale. Forum wanted-to-buy posts and sold threads start unticked."""
+    if nl.source_key == forum_listing.SITE and forum_listing.parse_title(nl.title)["status"] in ("wanted", "sold"):
+        return False
+    return looks_like_truck(nl)
 
 
 KNOWN_ALERT_SITES = sorted(SITE_DOMAINS)

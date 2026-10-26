@@ -10,23 +10,39 @@ import sqlite3
 
 from ..db import utcnow
 from ..extract import (extract_attributes, identify_site, parse_location, parse_miles, parse_price,
-                       parse_truck_identity, parse_year)
+                       parse_seller_type, parse_truck_identity, parse_year)
 from ..models import NormalizedListing
 from ..vin import find_vins
+from . import forum_listing
 
 MAX_TEXT = 200_000
-# Domains where even single-page assisted capture is disabled: copy details by hand instead.
-BLOCKED_CAPTURE_DOMAINS = ("facebook.com", "messenger.com", "fb.com")
+# Domains where even single-page assisted capture is disabled, with what to do instead.
+FACEBOOK_NOTE = ("Facebook Marketplace: please type the details in **Manual** instead (Meta prohibits automated "
+                 "collection).")
+ROAMER_NOTE = ("Rivian Roamer's terms don't allow its data to be fed into other apps. Open the truck's rivian.com "
+               "listing from Roamer and paste Rivian's page instead. It also has the VIN and build details.")
+BLOCKED_CAPTURE_DOMAINS = {"facebook.com": FACEBOOK_NOTE, "messenger.com": FACEBOOK_NOTE, "fb.com": FACEBOOK_NOTE,
+                           "rivianroamer.com": ROAMER_NOTE}
+
+
+def blocked_reason(url: str | None) -> str | None:
+    """Why capture is disabled for this URL's site, or None when it's allowed."""
+    host = re.sub(r"^https?://", "", (url or "").lower()).split("/")[0]
+    return next((note for d, note in BLOCKED_CAPTURE_DOMAINS.items() if host == d or host.endswith("." + d)), None)
 
 
 def capture_blocked(url: str | None) -> bool:
-    host = re.sub(r"^https?://", "", (url or "").lower()).split("/")[0]
-    return any(host == d or host.endswith("." + d) for d in BLOCKED_CAPTURE_DOMAINS)
+    return blocked_reason(url) is not None
 
 
 def draft_from_text(text: str, url: str | None = None, title: str | None = None, image_url: str | None = None) -> dict:
     """Parse copied listing text into editable fields plus equipment claims with evidence."""
     text = (text or "")[:MAX_TEXT]
+    page_text = text
+    forum = forum_listing.is_forum_url(url)
+    if forum:            # read the thread title and first post only; replies quote other trucks
+        title = forum_listing.clean_title(title) or forum_listing.find_title(text)
+        text = forum_listing.first_post(text)
     blob = "\n".join(x for x in (title, text) if x)
     site, site_id = identify_site(url) if url else ("other", None)
     vins = find_vins(blob) or (find_vins(url) if url else [])
@@ -46,13 +62,15 @@ def draft_from_text(text: str, url: str | None = None, title: str | None = None,
     if m:
         trim = m.group(1).title()
     claims = extract_attributes(blob, "Parsed from text copied off the listing page", make=make, model=model)
-    return {
+    draft = {
         "url": url or "", "source": site, "source_listing_id": site_id, "vin": vins[0] if vins else "",
         "other_vins": vins[1:], "year": parse_year(blob), "make": make or "", "model": model or "", "trim": trim or "",
-        "price": parse_price(blob), "miles": parse_miles(blob), "seller_name": seller or "", "city": city or "",
+        "price": parse_price(blob), "miles": parse_miles(blob), "seller_name": seller or "",
+        "seller_type": parse_seller_type(blob) or "unknown", "city": city or "",
         "state": state or "", "zip": zip_code or "", "title": title or "", "description": text[:5000],
         "claims": claims, "photo_url": image_url if (image_url or "").startswith(("http://", "https://")) else "",
     }
+    return forum_listing.refine_draft(draft, page_text, title) if forum else draft
 
 
 def listing_from_draft(d: dict, import_method: str = "capture") -> NormalizedListing:

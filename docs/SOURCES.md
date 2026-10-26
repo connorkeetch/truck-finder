@@ -23,6 +23,20 @@ refuses to run there.
 The app does not automate sign-in, solve challenges, or navigate classified sites to collect inventory.
 Email formats vary, and all parsed values should be reviewed before saving.
 
+## Private-party and enthusiast sources
+
+These sites forbid automated collection in their terms, so the app never visits them. Each has a path you
+start yourself:
+
+| Site | How listings get in | What the app reads |
+|---|---|---|
+| **KSL Cars** | Saved-search alert emails, or paste/capture a listing page | Price, miles, location, VIN. "For Sale By Owner" / "Seller Type" sets the seller type; "Title Type: Rebuilt/Reconstructed" or "Salvage" records a branded title. |
+| **RivianForums** ("Rivians / Vehicles For Sale") | Watch the forum with email notifications and import those emails, or paste/capture a thread | The thread title ("Texas - For Sale: 2022 R1T …, 26k miles; $56k, PENDING") and the **first post only**. The title's price wins over an MSRP in the post. Seller type is private. SOLD threads save as sold; wanted-to-buy (WTB) posts are flagged. |
+| **Rivian Roamer** | Browse only | Nothing. Roamer's terms forbid feeding its data into other apps, so paste and the extension refuse its pages. Open the truck's rivian.com listing from Roamer and paste Rivian's page instead. It has the VIN and build details that Roamer's cards don't. Roamer's Atom feed ("Copy Atom Feed" on its inventory page) works in your own feed reader for alerts. |
+
+Saved links for RivianForums and Rivian Roamer appear under **Sources → Saved searches**, including in existing
+workspaces. Delete one and it stays deleted.
+
 ## Search scope and request limits
 
 Collection settings control what is sent to the provider. Inventory display filters operate locally and do
