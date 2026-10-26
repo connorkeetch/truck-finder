@@ -11,7 +11,7 @@ from ..db import utcnow
 from ..extract import extract_attributes, parse_location
 from ..importers import capture, email_alerts, manual
 from ..models import NormalizedListing
-from . import add_truck, common
+from . import add_truck, common, mailbox_panel
 from .forms import SITE_CHOICES, SITE_NAMES, listing_review_form
 
 COVERAGE_NOTES = {
@@ -122,6 +122,7 @@ def render() -> None:
 
     # ------------------------------------------------------------ email alerts
     with tabs[2]:
+        mailbox_panel.render()
         add_truck.email_block("src")
 
     # ------------------------------------------------------------ assisted capture

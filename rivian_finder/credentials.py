@@ -7,7 +7,8 @@ import re
 
 log = logging.getLogger(__name__)
 SERVICE = "rivian-finder"
-KEYS = {"autodev": "AUTODEV_API_KEY", "marketcheck": "MARKETCHECK_API_KEY"}
+KEYS = {"autodev": "AUTODEV_API_KEY", "marketcheck": "MARKETCHECK_API_KEY",
+        "imap": "TRUCK_FINDER_IMAP_PASSWORD"}     # mailbox app password for automatic alert-email import
 
 
 def _keyring():

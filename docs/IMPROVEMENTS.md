@@ -89,6 +89,14 @@ formats weren't available while building them:
 | KSL listing-page labels ("Title Type", "Seller Type") | A different label layout means the seller type or branded title isn't detected | Paste one real KSL ad and check the draft |
 | RivianForums watched-forum emails | The subject and link layout were modeled on XenForo's usual notification email | Import one real notification and compare with `tests/fixtures/synthetic_rivianforums_alert.eml` |
 | Forum threads whose title has no year, price or WTB | The title isn't found in a full-page paste, so price and miles come from the post | Fall back to the browser tab title, which the extension already sends |
+| Automatic mailbox import against real Gmail | Tested only against a fake IMAP server | Turn it on with a real app password and press **Check mailbox now** |
+
+## More sources
+
+| Idea | What we know | Next step |
+|---|---|---|
+| MarketCheck private-party search (`/v2/search/car/fsbo/active`) | One facets-only call (Oct 26, 2026): 67,571 listings from 24 sites, including 131 Rivians. Craigslist, KBB, FindMyElectric, PrivateAuto, eBay and OfferUp are in it; KSL isn't. Updated daily. Billed at a premium rate. | A second search mode in `sources/marketcheck.py` mapping `source` to site keys, with its own call budget |
+| Alert emails from more sites (Cars & Bids, Bring a Trailer, FindMyElectric) | The mailbox import reads any email with listing links, but site-specific layouts are untested | Import one real email from each and add a redacted fixture |
 
 ## Leftovers from the Rivian-only days
 

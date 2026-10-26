@@ -9,6 +9,7 @@ startup options are environment variables.
 |---|---|---|
 | `AUTODEV_API_KEY` | none | Auto.dev Listings API key |
 | `MARKETCHECK_API_KEY` | none | MarketCheck inventory API key |
+| `TRUCK_FINDER_IMAP_PASSWORD` | none | Mailbox app password for [automatic alert-email import](AUTOMATION.md#import-alert-emails-automatically) |
 | `MARKETCHECK_BASE_URL` | `https://api.marketcheck.com` | Point MarketCheck at a different host |
 | `RIVIAN_FINDER_DATA_DIR` | `./data` | Folder for the database, backups, exports, logs and photos |
 | `RIVIAN_FINDER_DB` | `<data dir>/rivian_finder.db` | Database file, if you want it somewhere else |

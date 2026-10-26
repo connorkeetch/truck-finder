@@ -59,6 +59,9 @@ def _scheduled_search(conn) -> None:
         settings = db.load_settings(conn)
         if not settings.get("alerts", {}).get("enabled"):
             return
+        if services.mailbox_enabled(settings):       # alert emails cost no listing API calls
+            mail = services.check_mailbox(conn, settings)
+            log.info("Scheduled mailbox check %s: %s", mail["status"], mail["text"])
         keys, skipped = cli.budget_ok_sources(conn, settings)
         if skipped:
             log.info("Scheduled search skipped connectors: %s", "; ".join(skipped))

@@ -164,6 +164,17 @@ DEFAULT_SETTINGS: dict = {
         "min_drop": 0,
         "notify_when_nothing": False,
     },
+    # Read saved-search alert emails (KSL, RivianForums, AutoTrader…) from one mailbox folder over IMAP.
+    # The password lives in the OS credential store or TRUCK_FINDER_IMAP_PASSWORD, never here.
+    "email_import": {
+        "enabled": False,
+        "host": "imap.gmail.com",
+        "port": 993,
+        "username": "",
+        "mailbox": "Truck alerts",    # a Gmail label works as a folder
+        "lookback_days": 14,
+        "max_per_run": 50,
+    },
     "ui": {
         "photo_size": "L",        # S / M / L / XL thumbnails in tables
     },

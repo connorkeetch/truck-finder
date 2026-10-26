@@ -42,6 +42,7 @@ Set these service variables before deploying:
 | `TRUCK_FINDER_PROXY_SECRET` | A separate long, randomly generated secret |
 | `AUTODEV_API_KEY` | Your provider key, when used |
 | `MARKETCHECK_API_KEY` | Your provider key, when used |
+| `TRUCK_FINDER_IMAP_PASSWORD` | Mailbox app password, when importing alert emails automatically |
 
 Use Railway's secret variables or CLI stdin input. Keep the plaintext login password privately in your
 password manager. Do not commit secrets or put them in deployment commands, URLs or screenshots. The app's

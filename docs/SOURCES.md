@@ -37,6 +37,14 @@ start yourself:
 Saved links for RivianForums and Rivian Roamer appear under **Sources → Saved searches**, including in existing
 workspaces. Delete one and it stays deleted.
 
+To get KSL and RivianForums listings **automatically**, turn on
+[mailbox import](AUTOMATION.md#import-alert-emails-automatically). The sites email you, and the app reads those
+emails on every search.
+
+MarketCheck's private-party (FSBO) feed doesn't fill this gap. A check on Oct 26, 2026 found 24 source sites
+(KBB, Craigslist, Cars.com, AutoTrader, PrivateAuto, FindMyElectric, eBay, OfferUp and others), but no KSL,
+Facebook or RivianForums.
+
 ## Search scope and request limits
 
 Collection settings control what is sent to the provider. Inventory display filters operate locally and do

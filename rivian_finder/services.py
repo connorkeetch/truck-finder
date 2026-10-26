@@ -8,7 +8,8 @@ from . import attributes, backup, credentials, enrich, photos, pipeline, queries
 from .extract import identify_site
 from .geo import zip_latlon
 from .models import NormalizedListing
-from .db import load_settings
+from .db import load_settings, set_pref, utcnow
+from .importers import mailbox
 from .sources.autodev import AutoDevAdapter
 from .sources.base import API_CAPS, collection_scopes, configured_brands
 from .sources.demo import DemoAdapter
@@ -244,3 +245,16 @@ def lookup_vin(conn: sqlite3.Connection, vin: str) -> dict:
         return {"found": False}
     pipeline.import_listings(conn, [nl], "vin_lookup")
     return {"found": True, "title": nl.title or vin}
+
+
+def mailbox_enabled(settings: dict) -> bool:
+    return bool((settings.get("email_import") or {}).get("enabled"))
+
+
+def check_mailbox(conn: sqlite3.Connection, settings: dict | None = None, password: str | None = None,
+                  connect=None) -> dict:
+    """Import new alert emails from your mailbox (no listing API calls). The result is kept for the Sources page."""
+    with SEARCH_LOCK:
+        summary = mailbox.check(conn, settings or load_settings(conn), password=password, connect=connect)
+    set_pref(conn, "email_import_last", {**summary, "at": utcnow()})
+    return summary

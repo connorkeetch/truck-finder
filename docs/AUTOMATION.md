@@ -12,6 +12,7 @@ Run these from the project folder with the virtual environment's Python (`.venv\
 python -m rivian_finder.cli run            # search with every enabled, configured connector
 python -m rivian_finder.cli run --notify   # same, then show a desktop notification
 python -m rivian_finder.cli check-links    # check that saved listing links still work
+python -m rivian_finder.cli check-email    # import new alert emails from your mailbox
 python -m rivian_finder.cli notify-test    # make sure notifications show up
 ```
 
@@ -25,7 +26,8 @@ $ .venv/bin/python -m rivian_finder.cli run
 Things to know:
 
 - `run` uses every connector that is enabled and has a key, for all brands in your collection scope. If the
-  demo connector is still on, it runs too.
+  demo connector is still on, it runs too. When [mailbox import](#import-alert-emails-automatically) is on, it
+  reads your alert emails first, even if no connector is ready.
 - `run` skips a connector when its monthly budget can't cover a full run (with 20% headroom), and says so.
 - `run` exits with `0` when at least one source succeeded and `1` otherwise, so you can chain it in scripts.
 - `run` logs to `data/logs/scheduled.log`.
@@ -64,6 +66,45 @@ desktop session. If no notification appears, run `notify-test` from a terminal f
 The cloud deployment runs scheduled searches inside the server, using the times in **Settings → Alerts** and
 the `TZ` variable. Missed times aren't caught up after a restart. See
 [Private Railway deployment](CLOUD_DEPLOYMENT.md#scheduling-and-desktop-features).
+
+## Import alert emails automatically
+
+KSL, RivianForums, AutoTrader, Cars.com and most other sites can email you when a saved search finds something.
+Truck Finder can read those emails from one mailbox folder and import their listings on every **Run Search** and
+scheduled search. It costs no listing API calls, and the app never visits the sites. This is the way to get KSL
+and forum listings automatically: those sites don't allow automated collection.
+
+### Set it up (Gmail)
+
+1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification), then create an
+   [app password](https://myaccount.google.com/apppasswords). Your normal Gmail password won't work.
+2. Create a label, e.g. **Truck alerts**, and a filter that applies it to alert emails:
+
+   ```text
+   from:(ksl.com OR rivianforums.com OR autotrader.com OR cars.com OR cargurus.com OR carmax.com OR carvana.com)
+   ```
+
+3. Turn on alerts: save a search on KSL with email notifications, and on RivianForums open
+   **Rivians / Vehicles For Sale** → **Watch** → email notifications.
+4. In Truck Finder: **More → Sources → Email alerts → Automatic import from your mailbox → Set up / change**.
+   Turn it on, enter your Gmail address, the label name and the app password, then **Save**.
+5. Press **Check mailbox now** to try it.
+
+Other providers work too: enter their IMAP server (for example `outlook.office365.com`) and a folder name.
+
+### What it does
+
+- Reads **only that folder or label**, read-only. Nothing is marked read, moved or deleted.
+- Imports each email once, remembered by its Message-ID. It reads emails from the last 14 days (adjustable), up to
+  50 per check; the rest wait for the next check.
+- Saves listings that match your saved make/model searches. Wanted-to-buy posts and SOLD forum threads are
+  skipped. Imported listings follow the usual [import rules](IMPORTING.md): duplicates merge by VIN or link, and
+  nothing is ever marked missing.
+- Shows the last result and recent emails on the Sources page. `data/logs/scheduled.log` has scheduled runs.
+
+To import emails without a browser open, turn on the scheduled search (Windows), add the cron line above
+(macOS/Linux), or use the hosted scheduler. On Railway, set the app password as the `TRUCK_FINDER_IMAP_PASSWORD`
+variable.
 
 ## Watching your API budget
 

@@ -60,6 +60,8 @@ exports contain the same information. Treat them as private, and don't attach th
 The app only contacts:
 
 - the listing APIs you configured (Auto.dev, MarketCheck);
+- your mail server, only if you turn on automatic alert-email import. It signs in with an app password (kept in
+  the OS credential store or `TRUCK_FINDER_IMAP_PASSWORD`, never the database) and opens one folder read-only;
 - NHTSA (vPIC VIN decoding, recalls), which is free and needs no key;
 - image URLs supplied by listings, to cache one thumbnail per vehicle;
 - listing pages, only when you press **Check listing links**. That's one request per link, it respects

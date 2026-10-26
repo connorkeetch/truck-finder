@@ -88,7 +88,8 @@ See also [`examples/sample_listings.json`](../examples/sample_listings.json).
 ## Email alerts
 
 Most listing sites (AutoTrader, Cars.com, KSL, CarGurus…) can email you when a saved search finds something.
-Truck Finder reads those emails.
+Truck Finder reads those emails. To have it read them from your mailbox automatically, see
+[Import alert emails automatically](AUTOMATION.md#import-alert-emails-automatically). To import by hand:
 
 1. Save the email as a file:
    - **Gmail**: open the email → **⋮** → **Download message** (saves an `.eml`).

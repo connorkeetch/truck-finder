@@ -313,9 +313,12 @@ def search_dialog(keys: list[str] | None = None) -> None:
     if start.button("Start search", type="primary", disabled=not brands, key="search_start", width="stretch") and brands:
         with st.spinner("Searching… (respecting provider rate limits)"):
             summary = services.run_sources(conn(), keys, s, brands=brands)
+            mail = services.check_mailbox(conn(), s) if services.mailbox_enabled(s) else None
         st.session_state["last_search_brands"] = brands
         st.session_state["last_summary"] = summary
         flash(summary.get("text", "Done"), "error" if summary.get("status") == "failed" else "success")
+        if mail:
+            flash(mail["text"], "error" if mail["status"] == "failed" else "info")
         st.rerun()
 
 
@@ -325,7 +328,8 @@ def sidebar() -> None:
         st.markdown("### 🛻 Truck Finder")
         st.session_state["_actions_box"] = st.container()   # filled by pages when table rows are ticked
         ready = [s for s in services.available_sources(c) if s["enabled"] and s["configured"]]
-        names = ", ".join(s["name"] for s in ready) or "none"
+        names = ", ".join([s["name"] for s in ready] + (["alert emails"] if services.mailbox_enabled(settings()) else [])
+                          ) or "none"
         if st.button("▶ Run Search", type="primary", width="stretch",
                      help=f"Choose brands, then search with enabled, configured connectors: {names}"):
             search_dialog()
