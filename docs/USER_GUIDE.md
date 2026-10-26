@@ -292,7 +292,7 @@ a minute or two) opens each active listing link once and records the result in t
 * **↪ moved** — the link now redirects to a general inventory page; often sold, but check the dealer's inventory.
 * **⚠ sold?** — the page loads but its heading says the vehicle is no longer available.
 * **? check** — open it yourself: the site blocks automated checks (Carvana, CarMax and many dealer sites answer
-  "Access Denied" / "Just a moment…"), its robots.txt asks tools not to open those pages (Carfax listings), or the
+  "Access Denied" / "Just a moment…"), its robots.txt asks tools not to open those pages, or the
   link is a search page or an expiring listing-network click-through (Autolist, Vast) that can't confirm one truck.
 
 It's polite by design: an honest User-Agent, robots.txt respected, requests to one site spaced a few seconds
@@ -300,6 +300,13 @@ apart, and a site that blocks the first check is not retried or worked around. O
 **Link problems first** to review them; once you've confirmed one is sold, hide it (✓ → **🚫 Hide these** →
 *Sold / dead link*). Also
 available as `python -m rivian_finder.cli check-links`.
+
+CARFAX is always manual-only: the checker skips CARFAX addresses before requesting robots.txt or a page and
+stops redirects before following them to CARFAX. History-report links still open directly in a new tab.
+If CARFAX shows an access restriction, copy the link into your usual browser with JavaScript and cookies
+enabled. If you were using an automated browser, use your normal browser without developer tools attached.
+Avoid repeated retries. The app cannot guarantee access or clear CARFAX's restriction; use
+[CARFAX support](https://support.carfax.com/contact-us/general/) and include the restriction ID from their page.
 
 ## Battery: when sources disagree
 

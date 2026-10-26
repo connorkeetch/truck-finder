@@ -508,6 +508,12 @@ def history_tab(c, row, vid: int) -> None:
                            r["history_report_url"])
         st.caption("Dealer-supplied links usually open the full report free. Check title brands, accidents, owner count, "
                    "and the first-sold date (that's the warranty in-service date — enter it under Verify equipment).")
+        with st.expander("CARFAX access help"):
+            st.write("If CARFAX restricts access, copy the report link into your usual browser with JavaScript and "
+                     "cookies enabled. If you opened it in an automated browser, try your regular browser without "
+                     "developer tools attached. Avoid repeated retries; CARFAX controls access.")
+            st.link_button("Contact CARFAX support ↗", "https://support.carfax.com/contact-us/general/")
+            st.caption("Include the restriction ID shown on their page when requesting help.")
     else:
         st.write("No dealer-provided history report link for this truck. Ask the seller for a Carfax/AutoCheck, or buy one "
                  "with the VIN" + (f" **{row['vin']}**." if row["vin"] else "."))

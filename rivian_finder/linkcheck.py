@@ -13,7 +13,7 @@ import time
 import urllib.robotparser
 from collections import defaultdict
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 import requests
 
@@ -30,7 +30,7 @@ RESULTS = {
                          "dealer's inventory before hiding it."),
     "maybe_gone": ("⚠ sold?", "The page loads but its heading says the vehicle is no longer available."),
     "blocked": ("? check", "This site blocks automated checks — open the link yourself."),
-    "not_allowed": ("? check", "This site's robots.txt asks tools not to open these pages — open the link yourself."),
+    "not_allowed": ("? check", "Automated access is disabled for this site or disallowed by its robots.txt — open the link yourself."),
     "not_checkable": ("? check", "A search-results or listing-network link (Autolist, Vast): a status check can't "
                                  "tell whether the truck is still for sale — open it yourself."),
     "error": ("? check", "Couldn't reach the site — try again later or open the link yourself."),
@@ -46,6 +46,25 @@ GONE_HEADINGS = re.compile(r"page not found|\b404\b|not found|no longer availabl
 VIN_RE = re.compile(r"\b[A-HJ-NPR-Z0-9]{17}\b")
 READ_LIMIT = 300_000
 PER_HOST_DELAY = 2.5
+MANUAL_NOTE = "CARFAX is manual-only; no automated request was sent to CARFAX. Open the link in your regular browser."
+
+
+class _ManualOnly(Exception):
+    def __init__(self, status):
+        super().__init__(MANUAL_NOTE)
+        self.status = status
+
+
+def _manual_only(url: str) -> bool:
+    host = (urlsplit(requests.utils.requote_uri(url)).hostname or "").lower().rstrip(".")
+    return host == "carfax.com" or host.endswith(".carfax.com")
+
+
+def _stop_manual_redirect(response, *args, **kwargs):
+    if response.status_code in (301, 302, 303, 307, 308) and response.headers.get("Location"):
+        if _manual_only(urljoin(response.url, response.headers["Location"])):
+            response.close()
+            raise _ManualOnly(response.status_code)
 
 
 def label(result: str | None) -> str:
@@ -108,7 +127,8 @@ def _robots(session, url: str, timeout: int) -> urllib.robotparser.RobotFilePars
     parts = urlsplit(url)
     rp = urllib.robotparser.RobotFileParser()
     try:
-        r = session.get(f"{parts.scheme}://{parts.netloc}/robots.txt", timeout=timeout, headers={"User-Agent": USER_AGENT})
+        r = session.get(f"{parts.scheme}://{parts.netloc}/robots.txt", timeout=timeout, headers={"User-Agent": USER_AGENT},
+                        hooks={"response": [*getattr(session, "hooks", {}).get("response", []), _stop_manual_redirect]})
         if r.status_code in (401, 403):
             rp.disallow_all = True
         elif r.status_code == 200:
@@ -122,7 +142,8 @@ def _robots(session, url: str, timeout: int) -> urllib.robotparser.RobotFilePars
 
 def _fetch(session, url: str, timeout: int) -> tuple[int, str, str]:
     with session.get(url, timeout=timeout, allow_redirects=True, stream=True,
-                     headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"}) as r:
+                     headers={"User-Agent": USER_AGENT, "Accept": "text/html,application/xhtml+xml"},
+                     hooks={"response": [*getattr(session, "hooks", {}).get("response", []), _stop_manual_redirect]}) as r:
         chunks, size = [], 0
         for chunk in r.iter_content(chunk_size=65536):
             chunks.append(chunk)
@@ -140,7 +161,11 @@ def check_host(urls: list[str], session=None, delay: float = PER_HOST_DELAY, tim
     out: dict[str, tuple[str, int | None, str | None, str]] = {}
     rp = None
     blocked_note = None
+    manual_robots = False
     for i, url in enumerate(urls):
+        if _manual_only(url) or manual_robots:
+            out[url] = ("not_allowed", None, None, MANUAL_NOTE)
+            continue
         if not_checkable(url):
             out[url] = ("not_checkable", None, None, "listing-network link that expires" if
                         any(host_of(url).endswith(h) for h in EXPIRING_HOSTS) else "search-results link")
@@ -149,7 +174,12 @@ def check_host(urls: list[str], session=None, delay: float = PER_HOST_DELAY, tim
             out[url] = ("blocked", None, None, f"not retried — {blocked_note}")
             continue
         if rp is None:
-            rp = _robots(session, url, timeout)
+            try:
+                rp = _robots(session, url, timeout)
+            except _ManualOnly as e:
+                manual_robots = True
+                out[url] = ("not_allowed", e.status, None, str(e))
+                continue
         if not rp.can_fetch(USER_AGENT, url):
             out[url] = ("not_allowed", None, None, "robots.txt disallows automated access")
             continue
@@ -157,6 +187,9 @@ def check_host(urls: list[str], session=None, delay: float = PER_HOST_DELAY, tim
             sleep(delay)                            # space out requests to the same site
         try:
             status, final, html = _fetch(session, url, timeout)
+        except _ManualOnly as e:
+            out[url] = ("not_allowed", e.status, None, str(e))
+            continue
         except requests.RequestException as e:
             out[url] = ("error", None, None, type(e).__name__)
             continue

@@ -81,10 +81,10 @@ def test_search_page_links_are_not_requested():
 
 
 def test_robots_disallow_is_respected():
-    url = f"https://www.carfax.com/vehicle/{VIN}"
+    url = f"https://dealer.example/vehicle/{VIN}"
     s = FakeSession({url: Resp(200, url, page(VIN))}, robots="User-agent: *\nDisallow: /vehicle/\n")
     out = linkcheck.check_host([url], s, sleep=lambda _: None)
-    assert out[url][0] == "not_allowed" and s.calls == ["https://www.carfax.com/robots.txt"]
+    assert out[url][0] == "not_allowed" and s.calls == ["https://dealer.example/robots.txt"]
 
 
 def test_blocked_site_is_not_retried():
