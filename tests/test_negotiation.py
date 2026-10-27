@@ -20,7 +20,7 @@ def test_days_listed_takes_longest_evidence():
     assert negotiation.days_listed(ls, NOW) == (75, None, "MarketCheck days-on-market")
     days, since, src = negotiation.days_listed(ls[:1], NOW)
     assert (days, since, src) == (30, "2026-09-20", "provider's first-seen date")
-    assert negotiation.days_listed([{"first_seen_at": "2026-10-10T00:00:00Z"}], NOW)[2] == "first seen by Truck Finder"
+    assert negotiation.days_listed([{"first_seen_at": "2026-10-10T00:00:00Z"}], NOW)[2] == "first seen by MotorSift"
 
 
 def test_leverage_levels():

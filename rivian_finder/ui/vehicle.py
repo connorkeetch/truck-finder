@@ -39,7 +39,7 @@ def render() -> None:
     inv = common.inventory(s)
     st.title("Vehicle details")
     if inv.empty:
-        st.info("No vehicles yet.")
+        st.info("Add a vehicle in Inventory first, manually or through a configured source. Open its photo or name to review details here.")
         return
     ids = inv["vehicle_id"].tolist()
     labels = {int(r["vehicle_id"]): common.vehicle_label(r) for _, r in inv.iterrows()}
@@ -52,7 +52,7 @@ def render() -> None:
 
 
 def warranty_line(row) -> None:
-    """One line of warranty info above the notes (details live in Quick verify / Overview)."""
+    """Warranty context beside Quick verify; source details remain in Overview."""
     from .. import warranty as w
     ends = w.ends_text(row.get("warranty_expires"), row.get("warranty_miles_limit"))
     if ends:
@@ -62,11 +62,11 @@ def warranty_line(row) -> None:
                     unsafe_allow_html=True)
     else:
         st.markdown("🛡️ **Warranty:** unknown — " + ("add the in-service date or paste the warranty lines in Quick verify."
-                    if row.get("make") == "Rivian" else "paste this truck's actual warranty dates and mileage limits in Quick verify."))
+                    if row.get("make") == "Rivian" else "paste this vehicle's actual warranty dates and mileage limits in Quick verify."))
 
 
 def notes_box(c, vid: int, current: str | None) -> None:
-    """Free-form notes for this truck — saved as soon as you click away."""
+    """Free-form notes for this vehicle — saved as soon as you click away."""
     key = f"notes_box_{vid}_{abs(hash(current or '')) % 10**8}"     # fresh box if the notes changed elsewhere
 
     def _save() -> None:
@@ -85,7 +85,7 @@ def notes_box(c, vid: int, current: str | None) -> None:
 
 
 def favorite_and_hide(c, row, vid: int, where) -> None:
-    """★ Favorite and 🚫 Not interested, at the top of the truck's details."""
+    """★ Favorite and 🚫 Not interested, at the top of the vehicle's details."""
     f1, f2 = where.columns([1, 1.6])
     fav = f1.toggle("★ Favorite", bool(row["favorite"]), key=f"fav_{vid}")
     if fav != bool(row["favorite"]):
@@ -94,13 +94,13 @@ def favorite_and_hide(c, row, vid: int, where) -> None:
     if row["hidden"]:
         return
     with f2.popover("🚫 Not interested…", width="stretch"):
-        st.caption("Hides this truck everywhere (including if it's relisted on another site). 'Title issues' also "
+        st.caption("Hides this vehicle everywhere (including if it's relisted on another site). 'Title issues' also "
                    "records the title as branded; 'Sold / dead link' marks its listings removed.")
         reason = st.selectbox("Reason", list(hiding.HIDE_REASONS), format_func=hiding.reason_label,
                               key=f"hide_reason_{vid}")
         note = st.text_input("Note (optional)", key=f"hide_note_{vid}",
                              placeholder="e.g. Carfax shows rebuilt title from 2024 flood claim")
-        if st.button("Hide this truck", type="primary", key=f"hide_{vid}"):
+        if st.button("Hide this vehicle", type="primary", key=f"hide_{vid}"):
             hiding.hide_vehicle(c, vid, reason, note)
             common.flash(f"Hidden: {hiding.reason_label(reason)}. Find it again under Inventory → 🚫 Hidden.", "info")
             st.session_state.pop("dialog_vid", None)        # close the Inventory pop-up
@@ -108,7 +108,7 @@ def favorite_and_hide(c, row, vid: int, where) -> None:
 
 
 def render_truck(c, s, inv, vid: int) -> None:
-    """Everything about one truck. Used by the Vehicle details page and the Inventory pop-up."""
+    """Everything about one vehicle. Used by the Vehicle details page and the Inventory pop-up."""
     row = inv[inv["vehicle_id"] == vid].iloc[0]
     is_rivian = row.get("make") == "Rivian"
     vehicle = c.execute("SELECT * FROM vehicles WHERE id=?", (vid,)).fetchone()
@@ -127,22 +127,30 @@ def render_truck(c, s, inv, vid: int) -> None:
     if row["is_demo"]:
         badges.append("<span class='rf-badge rf-demo'>DEMO — synthetic data</span>")
     badges.append(f"<span class='rf-badge'>{row['status']}</span>")
-    badges.append(f"<span class='rf-badge'>{row['generation']}</span>")
+    if row["generation"] and row["generation"] != "Unknown":
+        badges.append(f"<span class='rf-badge'>{row['generation']}</span>")
     badges.append(f"<span class='rf-badge'>VIN {row['vin'] or '— (' + row['vin_status'] + ')'}</span>")
     head.markdown(" ".join(badges), unsafe_allow_html=True)
     if row["status"] != "active" and row["status_reason"]:
         head.warning(row["status_reason"])
 
-    m = head.columns(3) + head.columns(3)
+    m = head.columns(3)
     m[0].metric("Price", common.money(row["price"]),
                 delta=f"{row['price_change']:+,.0f} since first seen" if row["price_change"] else None,
                 delta_color="inverse")
     m[1].metric("Mileage", common.miles(row["miles"]))
-    m[2].metric("Est. monthly", common.money(row["est_monthly"]),
-                help="Primary scenario from Settings → Loan assumptions")
-    m[3].metric("Cash for target payment", common.money(row["cash_to_target"]))
-    m[4].metric("Distance", f"{row['distance_mi']:,.0f} mi" if pd.notna(row["distance_mi"]) else "—")
-    m[5].metric("Personal score", int(row.get("match_score") or 0), help="How this truck fits your shopping profile and saved limits.")
+    m[2].metric("Distance", f"{row['distance_mi']:,.0f} mi" if pd.notna(row["distance_mi"]) else "—")
+    history_warnings = []
+    if row["title_status"] == "branded":
+        history_warnings.append("Branded title")
+    if row["accident_history"] == "reported":
+        history_warnings.append("Accident reported")
+    if history_warnings:
+        head.warning(" · ".join(history_warnings))
+    conflicts = {f: r for f, r in resolved.items() if r.conflict}
+    if conflicts:
+        head.warning("Sources disagree: " + ", ".join(FIELD_LABELS.get(f, f) for f in conflicts)
+                     + ". Review the evidence in Overview.")
     head.markdown(f"**Personal match: {row.get('match_status') or 'Needs verification'}**")
     if row.get("match_failures"):
         head.warning("Does not meet: " + "; ".join(row["match_failures"]))
@@ -160,19 +168,17 @@ def render_truck(c, s, inv, vid: int) -> None:
             st.rerun()
 
     where_sold(c, row, vid)
-    deal_strip(row)
-    negotiation_strip(row)
-    quick_verify(c, vid, row)
-    warranty_line(row)
-    notes_box(c, vid, vehicle["notes"])
 
     (t_overview, t_verify, t_prices, t_listings, t_history, t_finance, t_checklist, t_identity,
      t_log) = st.tabs(["Overview", "Verify equipment", "Price history", "Listings & sources", "History & recalls",
-                       "Financing", "Checklist & contacts", "Photo & identity", "Change log"])
+                       "Financing", "Notes & checklist", "Photo & identity", "Change log"])
 
     # ---------------------------------------------------------- overview
     with t_overview:
-        st.caption(f"Legacy fit score: {row['fit_score']}/100 · {row['fit_breakdown']}")
+        with st.expander("Match scores"):
+            st.metric("Personal score", int(row.get("match_score") or 0),
+                      help="How this vehicle fits your shopping profile and saved limits.")
+            st.caption(f"Legacy fit score: {row['fit_score']}/100 · {row['fit_breakdown']}")
         rows = []
         for f in ["model_year", "generation", "trim", "vpic_trim", "battery", "motor", "tonneau", "tonneau_mention",
                   "epa_range", "tow_capacity_lbs", "wheels", "exterior_color", "interior_color", "in_service_date", "warranty_expiration",
@@ -202,8 +208,7 @@ def render_truck(c, s, inv, vid: int) -> None:
             st.rerun()
         st.caption("Confidence: verified = you checked it · high = manufacturer/VIN data · medium = structured "
                    "listing field · low = parsed from listing text. Unknown means no source has said.")
-        st.caption("Tow capacity must match this truck's battery, configuration and tow package. Verify its rating and payload from the sticker or manufacturer before towing.")
-        conflicts = {f: r for f, r in resolved.items() if r.conflict}
+        st.caption("EV and towing fields may not apply to every vehicle. If you plan to tow, verify this exact vehicle's configuration, tow rating and payload from the sticker or manufacturer.")
         if conflicts:
             st.subheader("⚠️ Source conflicts")
             for f, r in conflicts.items():
@@ -215,8 +220,11 @@ def render_truck(c, s, inv, vid: int) -> None:
 
     # ---------------------------------------------------------- verification
     with t_verify:
+        warranty_line(row)
+        quick_verify(c, vid, row)
         st.write("Record what **you** have verified (in person, from the seller, a Carfax report or the manufacturer). "
                  "Verified values always override source data and are never overwritten by later scans.")
+        st.caption("Leave fields as unknown or as listed when they do not apply, including EV battery/range and powered tonneau equipment.")
         overrides = {r["field"]: dict(r) for r in c.execute("SELECT * FROM user_overrides WHERE vehicle_id=?", (vid,))}
         with st.form(f"verify_{vid}"):
             def pick(field, options, fmt=None, col=st):
@@ -268,6 +276,9 @@ def render_truck(c, s, inv, vid: int) -> None:
 
     # ---------------------------------------------------------- price history
     with t_prices:
+        with st.expander("Deal rating & negotiation"):
+            deal_strip(row)
+            negotiation_strip(row)
         price_insights.render(c, vid)
         ph = queries.price_history(c, vid)
         if ph.empty:
@@ -336,6 +347,10 @@ def render_truck(c, s, inv, vid: int) -> None:
 
     # ---------------------------------------------------------- financing
     with t_finance:
+        monthly, cash = st.columns(2)
+        monthly.metric("Est. monthly", common.money(row["est_monthly"]),
+                       help="Primary scenario from Settings → Loan assumptions")
+        cash.metric("Cash for target payment", common.money(row["cash_to_target"]))
         if not row["price"]:
             st.write("No price known.")
         else:
@@ -359,6 +374,7 @@ def render_truck(c, s, inv, vid: int) -> None:
                        "the separate cash sale does not by default. Edit assumptions in Settings → Loan assumptions.")
 
     with t_checklist:
+        notes_box(c, vid, vehicle["notes"])
         checklist_tab(c, vid, row)
 
     # ---------------------------------------------------------- notes & identity
@@ -387,11 +403,11 @@ def render_truck(c, s, inv, vid: int) -> None:
                 label = common.vehicle_label(orow.iloc[0]) if not orow.empty else f"vehicle #{other}"
                 st.markdown(common.md(f"- **{label}** — score {cand['score']:.1f}: {cand['reasons']}"))
                 b1, b2 = st.columns(2)
-                if b1.button("Same truck — merge", key=f"merge_{cand['id']}"):
+                if b1.button("Same vehicle — merge", key=f"merge_{cand['id']}"):
                     keep = dedup.merge_vehicles(c, vid, other)
                     st.session_state["selected_vehicle"] = keep
                     st.rerun()
-                if b2.button("Different trucks", key=f"reject_{cand['id']}"):
+                if b2.button("Different vehicles", key=f"reject_{cand['id']}"):
                     dedup.reject_candidate(c, cand["id"])
                     st.rerun()
 
@@ -411,7 +427,7 @@ def render_truck(c, s, inv, vid: int) -> None:
 
 
 def link_check_line(where, row) -> None:
-    """Result of the last 'Check listing links' run for this truck's link."""
+    """Result of the last 'Check listing links' run for this vehicle's link."""
     from .. import linkcheck
     res = row.get("link_result")
     if not res:
@@ -422,7 +438,7 @@ def link_check_line(where, row) -> None:
 
 
 def where_sold(c, row, vid: int) -> None:
-    """Prominent answer to 'where is this truck actually for sale?'."""
+    """Prominent answer to 'where is this vehicle actually for sale?'."""
     with st.container(border=True):
         if row["seller_url"]:
             a, b = st.columns([4, 1.4])
@@ -442,7 +458,7 @@ def where_sold(c, row, vid: int) -> None:
             if row.get("link_result") in linkcheck.PROBLEMS:
                 if row["find_seller_url"]:
                     b.link_button("Find seller (web search) ↗", row["find_seller_url"], width="stretch")
-                a.caption("Found it at a new address? Paste it here — the truck keeps its history.")
+                a.caption("Found it at a new address? Paste it here — the vehicle keeps its history.")
                 _link_form(a, c, vid, row)
             return
         a, b = st.columns([4, 1.4])
@@ -453,7 +469,7 @@ def where_sold(c, row, vid: int) -> None:
                       "then paste it below. Once linked, price checks and questions go straight to the seller.")
             b.link_button(f"Open on {row['found_on'].split(',')[0]} ↗", row["found_on_url"], width="stretch")
         else:
-            a.markdown("**Where it's sold:** no link recorded for this truck.")
+            a.markdown("**Where it's sold:** no link recorded for this vehicle.")
         if row["find_seller_url"]:
             b.link_button("Find seller (web search) ↗", row["find_seller_url"], width="stretch")
         if row["dealer_website"]:
@@ -463,7 +479,7 @@ def where_sold(c, row, vid: int) -> None:
 
 def edit_seller_link(c, vid: int, row) -> None:
     """Fix or remove the seller link (kept through every search)."""
-    st.caption("Paste the right link for this truck's listing, or remove the wrong one.")
+    st.caption("Paste the right link for this vehicle's listing, or remove the wrong one.")
     new = st.text_input("Seller's listing link", row["seller_url"], key=f"fix_link_{vid}")
     s1, s2 = st.columns(2)
     action = None
@@ -482,7 +498,7 @@ def edit_seller_link(c, vid: int, row) -> None:
 
 
 def _link_form(where, c, vid: int, row) -> None:
-    """Paste the seller's own listing URL (new truck page, or a listing that moved)."""
+    """Paste the seller's own listing URL (new vehicle page, or a listing that moved)."""
     with where.form(f"seller_link_{vid}", clear_on_submit=True, border=False):
         x1, x2, x3 = st.columns([4, 1.3, 1])
         url = x1.text_input("Seller's listing URL", placeholder="https://dealer-site.example/used/2024-rivian-r1t-…",
@@ -515,7 +531,7 @@ def history_tab(c, row, vid: int) -> None:
             st.link_button("Contact CARFAX support ↗", "https://support.carfax.com/contact-us/general/")
             st.caption("Include the restriction ID shown on their page when requesting help.")
     else:
-        st.write("No dealer-provided history report link for this truck. Ask the seller for a Carfax/AutoCheck, or buy one "
+        st.write("No dealer-provided history report link for this vehicle. Ask the seller for a Carfax/AutoCheck, or buy one "
                  "with the VIN" + (f" **{row['vin']}**." if row["vin"] else "."))
     if row["owners"] or row["title_status"] != "unknown":
         st.caption(f"From listing data: title {queries.label_title(row['title_status'])}"
@@ -523,7 +539,7 @@ def history_tab(c, row, vid: int) -> None:
 
     st.subheader("Safety recalls")
     if row.get("make") != "Rivian":
-        st.caption("Automatic model-year recall caching currently covers Rivian R1T only. Check this truck's VIN with NHTSA or its manufacturer.")
+        st.caption("Automatic model-year recall caching currently covers Rivian R1T only. Check this vehicle's VIN with NHTSA or its manufacturer.")
         st.link_button("Open NHTSA VIN recall lookup ↗", row["recall_lookup_url"])
         return
     year = int(row["year"]) if pd.notna(row["year"]) else None
@@ -541,14 +557,14 @@ def history_tab(c, row, vid: int) -> None:
         a.write(f"No recalls cached for {year} R1T yet. They load during the next Run Search, or click Refresh.")
     else:
         ota = sum(1 for r in items if r["ota"])
-        a.markdown(f"**{len(items)} recall(s)** issued for the {year} R1T ({ota} fixed over the air). Not every truck of "
+        a.markdown(f"**{len(items)} recall(s)** issued for the {year} R1T ({ota} fixed over the air). Not every vehicle of "
                    "a model year is affected, and completed repairs don't show here.")
         st.dataframe(pd.DataFrame([{"Date": r["report_date"], "Campaign": r["campaign"], "Component": r["component"],
                                     "Over the air": bool(r["ota"]), "Summary": r["summary"], "Remedy": r["remedy"]}
                                    for r in items]), hide_index=True,
                      column_config={"Summary": st.column_config.TextColumn(width="large"),
                                     "Remedy": st.column_config.TextColumn(width="large")})
-    st.markdown(f"**Is anything still open on this exact truck?** Paste the VIN"
+    st.markdown(f"**Is anything still open on this exact vehicle?** Paste the VIN"
                 + (f" `{row['vin']}`" if row["vin"] else "") + " into NHTSA's lookup (it shows unrepaired recalls only), "
                 "or ask Rivian service.")
     st.link_button("Open NHTSA VIN recall lookup ↗", row["recall_lookup_url"])
@@ -563,7 +579,7 @@ def negotiation_strip(row) -> None:
                          + (f" · listed since {row['listed_since']}" if row["listed_since"] else ""))
         drops = int(row["price_drops"])
         n[1].metric("Price drops", drops, delta=f"-${int(row['dropped_total']):,}" if drops else None,
-                    delta_color="inverse", help="Price cuts Truck Finder has observed on this listing")
+                    delta_color="inverse", help="Price cuts MotorSift has observed on this listing")
         n[2].metric("Leverage", row["leverage"],
                     help="Heuristic: High = listed 60+ days or 2+ price cuts; Medium = 30+ days or 1 cut")
         lines = [f"**Negotiation:** {common.md(row['leverage_text'])}."]
@@ -599,7 +615,7 @@ def photo_manager(c, vid: int, row) -> None:
 
 def photo_form(c, vid: int, row, key: str = "top") -> None:
     """Pick a different photo: an image URL or an uploaded file. Your choice is kept through every search."""
-    st.caption("Wrong or missing photo? On the listing, right-click the truck's photo → **Copy image address** and "
+    st.caption("Wrong or missing photo? On the listing, right-click the vehicle's photo → **Copy image address** and "
                "paste it here, or save the picture and upload it. Your choice is kept through every search.")
     with st.form(f"photo_{key}_{vid}", clear_on_submit=True, border=False):
         url = st.text_input("Image URL", placeholder="https://…/photo.jpg")
@@ -646,7 +662,7 @@ def checklist_tab(c, vid: int, row) -> None:
             msg = "Checklist saved." + (f" Verified: {', '.join(fed)}." if fed else "")
             common.flash(msg)
             if answers["title"][0] == "problem" and not row["hidden"]:
-                common.flash("Title problem recorded. To drop this truck: 🚫 Not interested → Branded title.", "info")
+                common.flash("Title problem recorded. To drop this vehicle: 🚫 Not interested → Branded title.", "info")
             st.rerun()
 
     st.subheader("Calls & messages")
@@ -726,18 +742,19 @@ def quick_verify(c, vid: int, row) -> None:
             else:
                 wheel = st.text_input(f"Wheels (sources: {row['wheels'] or 'unknown'}) — blank = as listed",
                                       cur_w or "", key=f"qv_wheels_{vid}") or SOURCES
-            opts = list(TONNEAU_STATUSES)
-            cur_t = overrides.get("tonneau") or row["tonneau"]
-            ton = t.selectbox("Powered tonneau", opts, index=opts.index(cur_t) if cur_t in opts else opts.index("unknown"),
-                              format_func=TONNEAU_STATUSES.get, key=f"qv_ton_{vid}")
+            opts = [SOURCES] + list(TONNEAU_STATUSES)
+            cur_t = overrides.get("tonneau") or SOURCES
+            ton = t.selectbox(f"Powered tonneau (sources: {TONNEAU_STATUSES.get(row['tonneau'], 'Unknown')})", opts,
+                              index=opts.index(cur_t) if cur_t in opts else 0,
+                              format_func=lambda value: TONNEAU_STATUSES.get(value, value), key=f"qv_ton_{vid}")
             wtxt = st.text_area("Paste warranty info (optional)", key=f"qv_w_{vid}", height=90,
                                 placeholder="Comprehensive\nApr 2028 or 60k mi\nBattery pack & drivetrain\nApr 2031 or 175k mi")
             if st.form_submit_button("Save", type="primary"):
                 note = "Quick verify"
                 if (isd.isoformat() if isd else None) != cur:
                     attributes.set_override(c, vid, "in_service_date", isd.isoformat() if isd else None, note)
-                if ton != (overrides.get("tonneau") or row["tonneau"]) or (ton != "unknown" and "tonneau" not in overrides):
-                    attributes.set_override(c, vid, "tonneau", None if ton == "unknown" else ton, note)
+                if ton != cur_t:
+                    attributes.set_override(c, vid, "tonneau", None if ton in (SOURCES, "unknown") else ton, note)
                 for field, value in {**picked, "wheels": wheel}.items():
                     if (None if value == SOURCES else value) != overrides.get(field):
                         attributes.set_override(c, vid, field, None if value == SOURCES else value, note)
@@ -747,6 +764,5 @@ def quick_verify(c, vid: int, row) -> None:
                 if wtxt.strip() and not parsed:
                     st.error("Couldn't read dates from that warranty text — enter the warranty expiration under Verify equipment.")
                 else:
-                    common.flash("Saved. Warranty and tonneau now use your values." if (isd or parsed or ton != "unknown")
-                                 else "Saved.")
+                    common.flash("Saved.")
                     st.rerun()

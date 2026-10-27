@@ -1,6 +1,7 @@
 """Fresh workspaces are generic; saved shopping preferences keep their behavior."""
 from copy import deepcopy
 from dataclasses import asdict
+from datetime import date
 
 from rivian_finder import config
 from rivian_finder.finance import FinanceAssumptions
@@ -54,3 +55,11 @@ def test_explicit_searches_survive_settings_merge_without_sharing_defaults():
     first = config.default_settings()
     first["collection"]["searches"].append({"make": "Honda", "model": "Civic"})
     assert config.default_settings()["collection"]["searches"] == [{"make": "Rivian", "model": "R1T"}]
+
+
+def test_new_model_year_is_available_without_changing_saved_year_limits():
+    fresh = config.default_settings()
+    assert fresh["filters"]["year_max"] == fresh["collection"]["year_max"] == date.today().year + 1
+    saved = config.merge_settings({"filters": {"year_max": 2024}, "collection": {"year_max": 2025}})
+    assert saved["filters"]["year_max"] == 2024
+    assert saved["collection"]["year_max"] == 2025

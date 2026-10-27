@@ -14,7 +14,7 @@ from rivian_finder.sources.base import collection_scopes
 def personal_settings(settings):
     saved = copy.deepcopy(settings)
     saved["collection"].update(searches=[{"make": "Rivian", "model": "R1T"}],
-                               make="Rivian", model="R1T", year_min=2023,
+                               make="Rivian", model="R1T", year_min=2023, year_max=2026,
                                max_miles=44999, include_other_brands=False)
     saved["filters"].update(brands=["Rivian"], models=["R1T"], year_min=2023,
                             max_miles=44999, max_price=65000, near_misses=True,

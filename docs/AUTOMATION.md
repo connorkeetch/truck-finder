@@ -1,6 +1,6 @@
 # Automation and command line
 
-Searches normally start when you press **Run Search**. You can also run them on a schedule, from the command
+Searches normally start when you press **Refresh listings**. You can also run them on a schedule, from the command
 line, or from your own Python scripts.
 
 ## Command line
@@ -32,7 +32,7 @@ Things to know:
 - `run` exits with `0` when at least one source succeeded and `1` otherwise, so you can chain it in scripts.
 - `run` logs to `data/logs/scheduled.log`.
 - `check-links` makes one request per link, respects `robots.txt`, spaces out requests to each site, and stops
-  at the first bot challenge. A dead link doesn't prove the truck sold.
+  at the first bot challenge. A dead link doesn't prove the vehicle sold.
 
 ## Scheduled searches
 
@@ -40,7 +40,7 @@ Things to know:
 
 **Settings → Alerts**:
 
-1. Choose what to be told about: new matching trucks, price drops on favorites, good deals, a minimum drop.
+1. Choose what to be told about: new matching vehicles, price drops on favorites, good deals, a minimum drop.
 2. Enter times, for example `08:00, 18:00`.
 3. Press **Turn on scheduled search**.
 
@@ -70,7 +70,7 @@ the `TZ` variable. Missed times aren't caught up after a restart. See
 ## Import alert emails automatically
 
 KSL, RivianForums, AutoTrader, Cars.com and most other sites can email you when a saved search finds something.
-Truck Finder can read those emails from one mailbox folder and import their listings on every **Run Search** and
+MotorSift can read those emails from one mailbox folder and import their listings on every **Refresh listings** and
 scheduled search. It costs no listing API calls, and the app never visits the sites. This is the way to get KSL
 and forum listings automatically: those sites don't allow automated collection.
 
@@ -78,7 +78,7 @@ and forum listings automatically: those sites don't allow automated collection.
 
 1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification), then create an
    [app password](https://myaccount.google.com/apppasswords). Your normal Gmail password won't work.
-2. Create a label, e.g. **Truck alerts**, and a filter that applies it to alert emails:
+2. Create a label, e.g. **Vehicle alerts**, and a filter that applies it to alert emails:
 
    ```text
    from:(ksl.com OR rivianforums.com OR autotrader.com OR cars.com OR cargurus.com OR carmax.com OR carvana.com)
@@ -86,7 +86,7 @@ and forum listings automatically: those sites don't allow automated collection.
 
 3. Turn on alerts: save a search on KSL with email notifications, and on RivianForums open
    **Rivians / Vehicles For Sale** → **Watch** → email notifications.
-4. In Truck Finder: **More → Sources → Email alerts → Automatic import from your mailbox → Set up / change**.
+4. In MotorSift: **Sources → Email alerts → Automatic import from your mailbox → Set up / change**.
    Turn it on, enter your Gmail address, the label name and the app password, then **Save**.
 5. Press **Check mailbox now** to try it.
 
@@ -108,12 +108,15 @@ variable.
 
 ## Watching your API budget
 
-Auto.dev's and MarketCheck's free plans have monthly call limits. The app counts its own calls and stops before
-going over its configured caps. Each run is also capped by **Settings → Collection scope → Max pages per
+The app counts its own calls against local monthly safety budgets: 1,000 Auto.dev / 500 MarketCheck calls.
+These limits do not establish your provider's plan allowance or remaining credit. Each run is also capped by
+**Settings → Collection scope → Max pages per
 connector per run**.
 
 Example: a scope that needs 4 pages per run, searched twice a day, uses about 4 × 2 × 30 = **240 calls a
 month**. Calls you make outside this app (on the provider's dashboard or from other tools) aren't counted.
+Check your actual package, account-wide usage, and any paid data fees in the provider dashboard. See
+[API key setup and account limits](API_KEYS.md).
 
 ## From Python
 
@@ -155,7 +158,7 @@ for _, e in drops.head(10).iterrows():
 from rivian_finder import db, services
 
 conn = db.connect()
-summary = services.run_sources(conn)  # same as Run Search with every ready connector
+summary = services.run_sources(conn)  # same as Refresh listings with every ready connector
 print(summary["text"])
 ```
 

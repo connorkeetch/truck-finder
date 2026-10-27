@@ -37,7 +37,7 @@ def test_brand_and_tow_survive_cards_table_and_export(conn, settings, monkeypatc
     card = cards.payload(view, set(), settings["filters"])[0]
     assert "Ford F-150 Lightning" in card["title"]
     assert card["tow"] == "10,000 lb tow capacity" and "verified" in card["tow_note"]
-    assert "Range unknown — verify" in [label for label, _ in card["chips"]]
+    assert "Range unknown — verify" not in [label for label, _ in card["chips"]]
     settings["export"]["include_filtered_out"] = True
     ws = export_xlsx.build_workbook(conn, settings)["Current Inventory"]
     headers = [c.value for c in ws[1]]

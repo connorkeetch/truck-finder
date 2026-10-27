@@ -1,4 +1,7 @@
 """Card view data: price-tag colors, combined fields, warning chips."""
+import pandas as pd
+import pytest
+
 from conftest import listing, vin
 
 from rivian_finder import attributes, pipeline, queries
@@ -67,3 +70,41 @@ def test_shipping_text():
     assert cards._shipping_text(0.0, "Included by Vroom (confirm any transfer fee)") == "ship included"
     assert cards._shipping_text(0.0, "Distance unknown — default from Settings") == "shipping unknown"
     assert cards._shipping_text(float("nan"), "") == ""
+
+
+def _spec_card(context=None, **fields):
+    row = {"vehicle_id": 1, "make": "Toyota", "model": "Camry", "year": 2024, "price": 25000,
+           "your_price": 25000, "battery": "Unknown", "motor": "Unknown", **fields}
+    return cards.payload(pd.DataFrame([row]), set(), context or {})[0]
+
+
+@pytest.mark.parametrize("make,model", [("Toyota", "Camry"), ("Honda", "CR-V")])
+def test_general_vehicle_cards_skip_unrequested_ev_and_towing_unknowns(make, model):
+    card = _spec_card(make=make, model=model, title_status="branded", accident_history="reported")
+    assert card["battery"] == card["motor"] == card["tow"] == ""
+    labels = [label for label, _ in card["chips"]]
+    assert "Range unknown — verify" not in labels
+    assert "Branded title" in labels and "Accident reported" in labels
+    assert make in card["title"] and model in card["title"]
+
+
+@pytest.mark.parametrize("context", [{"min_range": 300}, {"range_min": 300}])
+def test_general_vehicle_cards_keep_unknown_range_for_explicit_targets(context):
+    card = _spec_card(context)
+    assert "Range unknown — verify" in [label for label, _ in card["chips"]]
+
+
+def test_general_vehicle_cards_keep_tow_target_and_known_specs():
+    assert _spec_card({"tow_min": 3500})["tow"] == "Tow capacity unknown"
+    card = _spec_card(battery="Extended Range", motor="Dual", range_text="310 mi", tow_capacity_lbs=7700)
+    assert card["battery"] == "Extended Range · 310 mi" and card["motor"] == "Dual"
+    assert card["tow"] == "7,700 lb tow capacity"
+    card = _spec_card(battery="Extended Range")
+    assert "Range unknown — verify" in [label for label, _ in card["chips"]]
+
+
+def test_rivian_cards_keep_existing_unknown_spec_prompts():
+    card = _spec_card(make="Rivian", model="R1T")
+    assert card["battery"] == card["motor"] == "Unknown"
+    assert card["tow"] == "Tow capacity unknown"
+    assert "Range unknown — verify" in [label for label, _ in card["chips"]]

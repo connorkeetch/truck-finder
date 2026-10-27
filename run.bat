@@ -1,5 +1,5 @@
 @echo off
-rem Truck Finder launcher for Windows. Double-click, or run from a terminal.
+rem MotorSift launcher for Windows. Double-click, or run from a terminal.
 cd /d "%~dp0"
 where py >nul 2>nul
 if %errorlevel%==0 (

@@ -37,7 +37,7 @@ def collect(conn: sqlite3.Connection, run_id: int, settings: dict) -> dict:
     new_ids = [e["vehicle_id"] for e in ev if e["event_type"] == "new_listing" and e["vehicle_id"] in matching.index]
     lines, parts = [], []
     if a["new_matches"] and new_ids:
-        parts.append(f"{len(new_ids)} new truck{'s' if len(new_ids) != 1 else ''}")
+        parts.append(f"{len(new_ids)} new vehicle{'s' if len(new_ids) != 1 else ''}")
         for vid in new_ids[:3]:
             r = matching.loc[vid]
             tag = f" ({r['deal_label']})" if a["great_deals"] and r["deal_label"] in ("Great deal", "Good deal") else ""
@@ -66,5 +66,5 @@ def collect(conn: sqlite3.Connection, run_id: int, settings: dict) -> dict:
             parts.append(f"{len(deals)} new great deal{'s' if len(deals) != 1 else ''}")
             lines += ["Deal: " + _name(matching.loc[vid]) for vid in deals[:3]]
     count = len(new_ids) * bool(a["new_matches"]) + len(drops)
-    title = "Truck Finder: " + (", ".join(parts) if parts else "no changes")
+    title = "MotorSift: " + (", ".join(parts) if parts else "no changes")
     return {"title": title, "lines": lines, "count": count}

@@ -104,7 +104,7 @@ def _score(row: pd.Series, col: str, best):
 
 def vehicle_name(row) -> str:
     year = str(int(row["year"])) if pd.notna(row.get("year")) else ""
-    return " ".join(str(v) for v in (year, row.get("make"), row.get("model") or "Truck", row.get("trim"))
+    return " ".join(str(v) for v in (year, row.get("make"), row.get("model") or "Vehicle", row.get("trim"))
                     if v is not None and pd.notna(v) and str(v).strip())
 
 

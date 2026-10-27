@@ -47,6 +47,7 @@ Set these service variables before deploying:
 Use Railway's secret variables or CLI stdin input. Keep the plaintext login password privately in your
 password manager. Do not commit secrets or put them in deployment commands, URLs or screenshots. The app's
 credentials page reports which keys are configured; cloud credentials are managed in Railway.
+For provider signup, package access, and key generation, see [Get API keys](API_KEYS.md).
 
 Deploy, generate a Railway domain targeting port 8080, then verify that anonymous page/photo/media requests
 are denied while authenticated navigation works. A passing health check confirms the server is running;
@@ -56,8 +57,9 @@ also check the actual signed-in app before treating a deployment as ready.
 
 Create a consistent SQLite backup with the app's backup tool or SQLite's backup API. Move that database and
 the `data/photos/` directory privately to the volume before the first app startup. Preserve the full database
-to retain notes, checklists, contacts, evidence, favorites and API usage counters. A JSON export does not
-contain every runtime table. Reset a Windows-specific export-folder preference to the default cloud folder.
+to retain notes, checklists, contacts, evidence, favorites and API usage counters. New JSON exports include
+these records, but photos remain separate files; use a consistent database backup for a deployment move.
+Reset a Windows-specific export-folder preference to the default cloud folder.
 
 Do not overwrite a running SQLite database. For a later restore, stop the service, preserve the current
 database, replace it with a validated backup, and restart. The hosted UI disables live restore and provides a
@@ -71,7 +73,7 @@ scheduled searches so two copies do not independently spend the same provider qu
 Hosted scheduling runs in the server process and reads **Settings → Alerts**. It uses your saved enabled flag,
 times and `TZ`, respects provider budgets, and waits for a future scheduled time after a restart. It does not
 catch up missed runs or start a search merely because someone opens the app. Keep scheduling disabled if you
-prefer selecting brands manually with **Run Search**.
+prefer selecting brands manually with **Refresh listings**.
 
 Manual and scheduled searches are serialized, and browser sessions use separate database connections. Results
 remain in Dashboard and refresh history. Desktop notifications are not phone push notifications. The browser
@@ -79,8 +81,8 @@ capture extension still targets the local computer; paste/import capture works o
 
 ## Mobile
 
-Inventory cards fit narrow screens, stack photos above details and provide larger touch targets. Search,
-refresh and selected-vehicle actions are available in the main page. **Compare → Compact comparison** shows
+Inventory cards fit narrow screens, stack photos above details and provide larger touch targets. Open the
+sidebar to filter, and use the main page for search, refresh and selected-vehicle actions. **Compare → Compact comparison** shows
 the essential rows without the full photo and financing layout. Wide tables can still scroll horizontally.
 
 This deployment is one private shopping workspace. It does not separate inventory or preferences between

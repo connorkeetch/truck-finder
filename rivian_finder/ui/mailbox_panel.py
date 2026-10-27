@@ -13,7 +13,7 @@ from . import common
 GMAIL_STEPS = """
 **Gmail setup (about 5 minutes):**
 1. Turn on [2-Step Verification](https://myaccount.google.com/signinoptions/two-step-verification), then create an
-   [app password](https://myaccount.google.com/apppasswords) named *Truck Finder*.
+   [app password](https://myaccount.google.com/apppasswords) named *MotorSift*.
 2. Make a label, e.g. **Truck alerts**, and a filter that applies it to your alert emails, e.g.
    `from:(ksl.com OR rivianforums.com OR autotrader.com OR cars.com OR cargurus.com)`.
 3. Turn on saved-search alerts on those sites (KSL saved searches; RivianForums → *Rivians / Vehicles For Sale* →

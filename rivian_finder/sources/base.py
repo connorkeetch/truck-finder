@@ -6,11 +6,12 @@ import json
 import logging
 import sqlite3
 import time
+from collections.abc import Callable
 
 import requests
 
 from ..db import utcnow
-from ..models import RateLimited, SourceError
+from ..models import FetchResult, RateLimited, SourceError
 from ..credentials import redact
 
 log = logging.getLogger(__name__)
@@ -147,6 +148,43 @@ class HttpSourceAdapter(SourceAdapter):
         if not self.api_key:
             return False, f"No API key configured for {self.name}. Add it in Settings → API credentials."
         return True, ""
+
+    def _fetch_scopes(self, scope: dict, build_params: Callable[[dict], dict]) -> FetchResult:
+        """Share one request allowance and combine the provider's per-scope results."""
+        scopes = collection_scopes(scope, self.key)
+        max_calls = max(int(scope.get("max_pages_per_run", 40)), 0)
+        before = self.calls
+        listings, notes, errors = [], [], []
+        complete = True
+        had_result = False
+        for index, query_scope in enumerate(scopes):
+            remaining = max_calls - (self.calls - before)
+            if scope.get("searches") is not None:
+                allowance = (remaining + len(scopes) - index - 1) // (len(scopes) - index)
+            else:
+                # Preserve the existing Rivian priority until the user configures custom searches.
+                allowance = min(max_calls, max(1, max_calls // 4)) if index < len(scopes) - 1 else remaining
+            self.set_call_limit(allowance)
+            try:
+                result = self._fetch_scope(query_scope)
+            except SourceError as e:
+                if len(scopes) == 1:
+                    raise
+                complete = False
+                errors.append(str(e))
+                continue
+            had_result = True
+            listings.extend(result.listings)
+            notes.extend(result.notes)
+            complete = complete and result.complete
+            if result.error:
+                errors.append(result.error)
+        if errors and not had_result:
+            raise SourceError("; ".join(errors))
+        shash = scope_hash({"src": self.key, "queries": [build_params(s) for s in scopes],
+                            **({"excluded_trims": scope["excluded_trims"]} if scope.get("excluded_trims") else {}),
+                            **({"exclude_standard_range": True} if scope.get("exclude_standard_range") else {})})
+        return FetchResult(listings, complete, shash, self.calls - before, notes, "; ".join(errors) or None)
 
     def set_call_limit(self, limit: int) -> None:
         """Limit all subsequent attempts, including retries, relative to the current count."""

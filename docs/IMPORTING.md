@@ -1,21 +1,21 @@
 # Importing listings
 
-You don't need an API account to use Truck Finder. You can bring listings in from a spreadsheet, a JSON file,
+You don't need an API account to use MotorSift. You can bring listings in from a spreadsheet, a JSON file,
 alert emails, or text copied from a listing page.
 
 Every import follows the same rules:
 
 - **You review before saving.** Parsed values are shown first, and nothing is stored until you confirm.
-- **Duplicates merge.** A listing with the same VIN or the same link updates the existing truck instead of
+- **Duplicates merge.** A listing with the same VIN or the same link updates the existing vehicle instead of
   adding a second copy.
-- **Imports never mark trucks missing.** Only a complete automatic scan can do that.
+- **Imports never mark vehicles missing.** Only a complete automatic scan can do that.
 - **Imported equipment is a claim, not a fact.** It's stored with its source and confidence. To mark something
-  as checked, use **Verify equipment** on the truck's details.
-- **Links are stored, never fetched.** Truck Finder doesn't visit the URLs you import.
+  as checked, use **Verify equipment** on the vehicle's details.
+- **Links are stored, never fetched.** MotorSift doesn't visit the URLs you import.
 
 ## CSV
 
-**More → Sources → CSV / JSON import**. Download the template there, or start from
+**Sources → CSV / JSON import**. Download the template there, or start from
 [`examples/sample_listings.csv`](../examples/sample_listings.csv).
 
 ```csv
@@ -46,7 +46,7 @@ Things to know:
 | `city`, `state`, `zip` | `Boise`, `ID`, `83702` | Used for distance and transport estimates |
 | `exterior_color`, `interior_color` | `Antimatter Blue` | |
 | `epa_range` | `320` | Miles. Mainly for EVs. |
-| `tow_capacity_lbs` | `7700` | This truck's own rating, if you know it |
+| `tow_capacity_lbs` | `7700` | This vehicle's own rating, if you know it |
 | `wheels` | `20" All-Terrain` | |
 | `battery`, `motor` | `Large`, `Dual` | Rivian-style values. Other makes can leave these blank. |
 | `tonneau` | `yes` | Powered tonneau cover: `yes`, `no`, or `unknown` |
@@ -88,13 +88,13 @@ See also [`examples/sample_listings.json`](../examples/sample_listings.json).
 ## Email alerts
 
 Most listing sites (AutoTrader, Cars.com, KSL, CarGurus…) can email you when a saved search finds something.
-Truck Finder reads those emails. To have it read them from your mailbox automatically, see
+MotorSift reads those emails. To have it read them from your mailbox automatically, see
 [Import alert emails automatically](AUTOMATION.md#import-alert-emails-automatically). To import by hand:
 
 1. Save the email as a file:
    - **Gmail**: open the email → **⋮** → **Download message** (saves an `.eml`).
    - **Outlook**: drag the message into a folder, or **File → Save as** `.eml`.
-2. **Inventory → ➕ Add a truck → Alert email** (or **More → Sources → Email alerts**) and drop the files in.
+2. **Inventory → Add vehicle → Alert email** (or **Sources → Email alerts**) and drop the files in.
    Several at once is fine. You can also paste the email body instead.
 3. Check the rows, fix anything parsed wrong, then **Save selected**.
 
@@ -112,7 +112,7 @@ start unticked.
 For a single listing you're looking at in your browser:
 
 1. On the listing page, press **Ctrl+A** then **Ctrl+C** (or highlight just the details).
-2. **Inventory → ➕ Add a truck → Paste listing**. Paste the text and the page's URL.
+2. **Inventory → Add vehicle → Paste listing**. Paste the text and the page's URL.
 3. Check what was found, then save.
 
 Try it with [`examples/sample_capture.txt`](../examples/sample_capture.txt). From this text:
@@ -133,10 +133,10 @@ motor, tonneau and warranty dates as verified values.
 
 **KSL ads**: "For Sale By Owner" or "Seller Type: Dealer" sets the seller type, and a "Title Type" of
 Rebuilt/Reconstructed or Salvage is recorded as a branded title. Check the title before you get attached to a
-cheap truck.
+cheap vehicle.
 
 **RivianForums threads**: paste the thread's URL and the whole page. Only the title and the first post are read,
-because replies often quote other trucks' prices. For example, from:
+because replies often quote other vehicles' prices. For example, from:
 
 ```text
 Utah - For Sale: 2022 R1T Launch Green, Quad, 31k miles; $54,500
@@ -153,7 +153,7 @@ you get $54,500 (from the title, not the MSRP), 31,000 miles, Utah, a private se
 "trailrunner42 (RivianForums)", and nothing from reply #2. A thread marked SOLD is saved as sold, which still
 helps price comparisons. A wanted-to-buy (WTB) post shows a warning.
 
-**Rivian Roamer pages can't be pasted.** Roamer's terms forbid feeding its data into other apps. Open the truck's
+**Rivian Roamer pages can't be pasted.** Roamer's terms forbid feeding its data into other apps. Open the vehicle's
 rivian.com listing from Roamer and paste that page instead.
 
 ## Browser extension (optional)
@@ -164,10 +164,10 @@ the text you've highlighted, the page title and the URL.
 1. Open `chrome://extensions` (Chrome, Edge or Brave) and turn on **Developer mode**.
 2. **Load unpacked** → choose the `extension/` folder.
 3. On a listing, highlight the details, click the extension → **Send selection**.
-4. Review it in **More → Sources → Assisted capture → Browser extension queue**.
+4. Review it in **Sources → Assisted capture → Browser extension queue**.
 
 The app must be open in a browser tab for the extension to reach it. Facebook Marketplace and Rivian Roamer are
-blocked on purpose. Use manual entry for Facebook, and the rivian.com listing for Roamer trucks. After updating
+blocked on purpose. Use manual entry for Facebook, and the rivian.com listing for Roamer vehicles. After updating
 the extension folder, press **Reload** on `chrome://extensions`.
 
 ## From a script

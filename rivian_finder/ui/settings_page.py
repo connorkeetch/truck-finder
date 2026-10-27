@@ -15,7 +15,7 @@ from ..config import US_STATES
 from ..geo import zip_latlon
 from ..sources.base import EV_TRUCK_PRESET, search_targets
 from . import common
-from .inventory import filter_controls
+from .inventory import adjustments_editor, filter_controls
 
 
 def parse_searches(text: str) -> list[dict]:
@@ -34,9 +34,11 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Settings")
+    st.caption("New setup: choose makes and models in Collection scope, enter your Location, then connect a provider in API credentials. Manual imports and demo data work without a key.")
     tabs = st.tabs(["Vehicle filters", "Collection scope", "Location", "API credentials", "Loan assumptions",
                     "Warranty", "Export", "Backup & data", "Shipping", "Alerts",
-                    "Cloud access" if cloud.is_cloud() else "Phone access"])
+                    "Cloud access" if cloud.is_cloud() else "Phone access", "My price adjustments"],
+                   default=st.session_state.pop("settings_section", None))
 
     with tabs[0]:
         st.write("Default filters for the Dashboard, Inventory and Excel export. They only filter what is already "
@@ -57,22 +59,21 @@ def render() -> None:
             st.success("Saved.")
 
     with tabs[1]:
-        st.write("What the API connectors ask providers for. Keep this **broader** than your filters so that "
-                 "narrowing a filter doesn't make listings look like they disappeared. Changing it means the next "
-                 "scan skips disappearance detection once.")
+        st.write("Choose the vehicles **Refresh listings** should collect. Add one **Make | Model** pair per line; you can mix cars, SUVs, vans, and trucks from several brands. Inventory filters narrow saved results without fetching more listings.")
+        st.caption("Keep collection limits broad enough for your search. After a scope change, the next scan does not mark unseen listings missing.")
         col = copy.deepcopy(s["collection"])
         b1, b2 = st.columns(2)
         for box, key, name, cap in ((b1, "autodev", "Auto.dev", 1000), (b2, "marketcheck", "MarketCheck", 500)):
             b = queries.api_budget(c, key, cap)
             with box.container(border=True):
-                st.markdown(f"**{name}** — {b['used']} of {b['cap']} free calls used this month")
+                st.markdown(f"**{name}** — {b['used']} of {b['cap']} local request budget used this month")
                 st.progress(min(b["used"] / b["cap"], 1.0))
                 if b["per_run"]:
                     st.caption(f"Last complete run: {b['per_run']} calls ({b['last_run_listings']} listing rows). "
                                 f"≈ {b['runs_left']} more full runs this month at that size.")
                 else:
                     st.caption("No complete run yet.")
-        st.caption("Each Auto.dev call returns 20 listings on the free plan. All selected makes/models share the connector's page and monthly call limits.")
+        st.caption("These are MotorSift's safety budgets, not a statement of your provider allowance. Every selected make/model shares its connector's per-run and monthly limits; provider limits can be stricter.")
         custom = st.checkbox("Choose makes and models", col.get("searches") is not None, key="collection_custom_searches",
                               help="Use any make/model pairs with common search limits. Turn off to keep the legacy EV truck search.")
         search_text = ""
@@ -80,15 +81,18 @@ def render() -> None:
             defaults = targets if col.get("searches") is not None else EV_TRUCK_PRESET
             initial = "\n".join(f"{row['make']} | {row['model']}" for row in defaults)
             st.session_state.setdefault("collection_searches_text", initial)
-            if st.button("Use EV truck presets", key="collection_ev_presets"):
+            examples, trucks = st.columns(2)
+            if examples.button("Use car & SUV examples", key="collection_general_presets"):
+                st.session_state["collection_searches_text"] = "Toyota | Camry\nHonda | CR-V\nFord | Mustang Mach-E"
+            if trucks.button("Use EV truck presets", key="collection_ev_presets"):
                 st.session_state["collection_searches_text"] = "\n".join(f"{r['make']} | {r['model']}" for r in EV_TRUCK_PRESET)
             search_text = st.text_area("Makes and models (one Make | Model per line)",
                                        key="collection_searches_text", height=150,
-                                       placeholder="Toyota | Tacoma\nFord | F-150\nRam | 1500")
+                                       placeholder="Toyota | Camry\nHonda | CR-V\nFord | Mustang Mach-E")
             st.caption("These pairs define your API searches. Each model is searched separately so it stays paired with its make.")
         c1, c2, c3 = st.columns(3)
         col["year_min"], col["year_max"] = c1.slider("Years to collect", min(1900 if custom else 2022, int(col["year_min"])),
-                                                      max(2027, int(col["year_max"])), (int(col["year_min"]), int(col["year_max"])))
+                                                      max(datetime.now().year + 1, int(col["year_max"])), (int(col["year_min"]), int(col["year_max"])))
         col["max_price"] = c2.number_input("Max price to collect", 1, 300000, int(col["max_price"]), 1000)
         col["max_miles"] = c3.number_input("Max miles to collect", 1, 300000, int(col["max_miles"]), 1000)
         if custom:
@@ -99,13 +103,14 @@ def render() -> None:
             st.caption("Distance is centered on Home ZIP. The provider's plan radius can limit coverage further. Legacy competitor-only price, mileage, distance and minimum-range caps do not apply. Your display filters and optional EV truck preferences still apply.")
         c1, c2, c3 = st.columns(3)
         col["max_pages_per_run"] = c1.number_input("Max pages per connector per run", 1, 200, int(col["max_pages_per_run"]),
-                                                   help="Caps API usage. Auto.dev free plan returns 20 results/page.")
+                                                   help="Caps all provider requests, including retries, across every selected make/model.")
         if not custom:
             col["marketcheck_zip"] = c2.text_input("MarketCheck search ZIP", col["marketcheck_zip"])
         else:
             c2.caption("MarketCheck searches use Home ZIP.")
-        col["marketcheck_radius"] = c3.number_input("MarketCheck radius (mi, 0 = nationwide/paid)", 0, 5000,
-                                                    int(col["marketcheck_radius"]), 25)
+        col["marketcheck_radius"] = c3.number_input("MarketCheck radius (mi, 0 = request nationwide)", 0, 5000,
+                                                    int(col["marketcheck_radius"]), 25,
+                                                    help="Your API package must permit this radius. Paid packages can also have radius limits.")
         col["vpic_enrichment"] = st.checkbox("Decode new VINs with NHTSA vPIC (free; adds motor configuration)",
                                              col["vpic_enrichment"])
         if not custom:
@@ -119,8 +124,7 @@ def render() -> None:
                                                    int(col.get("other_max_miles", 45000)), 1000)
             col["other_min_range"] = c3.number_input("Other brands: minimum known EPA range (mi)", 0, 600,
                                                    int(col.get("other_min_range", 301)))
-            st.caption("Other brands use your default vehicle-filter max price and Home ZIP. Defaults keep them within "
-                   "650 miles, at 45,000 miles or less and above 300 miles of known range. Unknown range stays eligible "
+            st.caption("Other brands use your default vehicle-filter max price and Home ZIP, plus the limits above. Unknown range stays eligible "
                    "and is labeled for verification; untick Include unknown range in Vehicle filters to hide it. "
                    "Include unknown range does not override the Standard Range exclusion. "
                    "Provider-side price, mileage and radius limits reduce pages where supported; range is checked "
@@ -172,27 +176,32 @@ def render() -> None:
             st.write("Keys are read from environment variables / `.env` first, then from your OS credential store "
                      "(Windows Credential Manager, macOS Keychain, or Secret Service). They are never written to the "
                      "database, exports or logs.")
-        info = {
-            "autodev": ("Auto.dev", "https://auto.dev/pricing", "Free plan: 1,000 calls/month, no card. Create a key at auto.dev/dashboard/api-keys."),
-            "marketcheck": ("MarketCheck", "https://www.marketcheck.com/apis/pricing", "Free plan: 500 calls/month, 100-mile radius."),
-        }
-        for key, (name, link, note) in info.items():
+        st.info("Either provider can collect listings for your configured makes and models. You do not need both. Saving a key does not make a provider request; choose Refresh listings when you are ready.")
+        for key, provider in common.API_SETUP.items():
+            name = provider["name"]
             with st.container(border=True):
                 val, where = ((os.environ.get(credentials.KEYS[key], "").strip(), "env") if cloud.is_cloud()
                               else credentials.get_api_key(key))
                 st.markdown(f"**{name}** — " + (f"configured via **{where}** ({credentials.mask(val)})" if val else "not configured"))
-                st.caption(f"{note} [{link}]({link})")
+                common.api_key_help(key)
                 if cloud.is_cloud():
+                    st.markdown(f"In your Railway service, open **Variables**, add `{credentials.KEYS[key]}` with the API Key as its value, then deploy the change. Reopen MotorSift and check this provider's status.")
                     continue
+                st.caption(f"Paste the API Key below and save it, or set {credentials.KEYS[key]} in your local .env file and restart MotorSift. Environment/.env values take priority over the OS credential store.")
                 with st.form(f"key_{key}"):
                     new = st.text_input(f"{name} API key", type="password", key=f"k_{key}")
                     a, b = st.columns(2)
-                    if a.form_submit_button("Save to OS credential store") and new.strip():
-                        try:
-                            credentials.save_api_key(key, new)
-                            st.success("Saved securely.")
-                        except Exception as e:
-                            st.error(f"{e}")
+                    if a.form_submit_button("Save to OS credential store"):
+                        if not new.strip():
+                            st.error("Paste an API Key before saving.")
+                        else:
+                            try:
+                                credentials.save_api_key(key, new)
+                                st.success("Key saved. Open Sources to check readiness, then Refresh listings to choose your brands.")
+                                if where == "env":
+                                    st.warning(f"{credentials.KEYS[key]} is still set in the environment or .env file and takes priority over this saved key.")
+                            except Exception as e:
+                                st.error(f"{e}")
                     if b.form_submit_button("Remove from credential store"):
                         credentials.delete_api_key(key)
                         st.success("Removed (environment variables, if any, still apply).")
@@ -341,11 +350,13 @@ def render() -> None:
         alert_settings(c, s)
     with tabs[10]:
         phone_settings()
+    with tabs[11]:
+        adjustments_editor(s)
 
 
 def shipping_settings(s: dict) -> None:
     sh = {**shipping.DEFAULTS, **(s.get("shipping") or {})}
-    st.write("How the app estimates getting each truck home. Amounts you type on a truck's *Listings & sources* tab "
+    st.write("How the app estimates getting each vehicle home. Amounts you type on a vehicle's *Listings & sources* tab "
              "always win. Estimates only — get a real quote before buying.")
     sh["fee_sellers"] = st.multiselect(
         "Sellers that charge their own delivery fee", list(shipping.INCLUDED_SELLERS), sh["fee_sellers"],
@@ -452,7 +463,7 @@ def alert_settings(c, s: dict) -> None:
         st.success(msg)
         st.rerun()
     if x3.button("Send a test notification"):
-        ok, detail = notifier.notify("Truck Finder", "Test notification — alerts are working.", "http://127.0.0.1:8501")
+        ok, detail = notifier.notify("MotorSift", "Test notification — alerts are working.", "http://127.0.0.1:8501")
         (st.success if ok else st.error)("Sent — check your notifications." if ok else f"Couldn't send: {detail}")
     st.caption("Log of scheduled runs: data/logs/scheduled.log. Windows: Task Scheduler → Task Scheduler Library → "
                "RivianFinder.")
@@ -465,7 +476,7 @@ def phone_settings() -> None:
         st.caption("Manage the private URL and login in your hosting service settings.")
         return
     acc = access.load()
-    st.write("Open Truck Finder from your phone on the same Wi-Fi. Anyone on your network would need the PIN; this "
+    st.write("Open MotorSift from your phone on the same Wi-Fi. Anyone on your network would need the PIN; this "
              "computer never asks for it. The browser-extension receiver stays private to this computer.")
     ips = access.lan_ips()
     if acc["lan"]:

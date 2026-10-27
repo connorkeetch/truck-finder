@@ -1,11 +1,11 @@
 {
   "manifest_version": 3,
-  "name": "Truck Finder Capture",
+  "name": "MotorSift Capture",
   "version": "1.2.0",
-  "description": "Send listing details you highlight to your local Truck Finder app for review. Runs only when you click it.",
+  "description": "Send listing details you highlight to your local MotorSift app for review. Runs only when you click it.",
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Send highlighted listing details to Truck Finder"
+    "default_title": "Send highlighted listing details to MotorSift"
   },
   "permissions": ["activeTab", "scripting"],
   "host_permissions": ["http://127.0.0.1:8765/*"]

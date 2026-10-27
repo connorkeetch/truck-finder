@@ -20,8 +20,8 @@ def save_listings(listings: list[NormalizedListing], trigger: str) -> dict | Non
         return None
     summary = pipeline.import_listings(common.conn(), listings, trigger)
     c = summary["counts"]
-    msg = (f"Saved {len(listings)} listing(s): {c.get('new_listing', 0)} new truck(s), "
-           f"{c.get('new_source_for_vin', 0)} new link(s) for trucks you already had, {c.get('price_drop', 0)} price drop(s).")
+    msg = (f"Saved {len(listings)} listing(s): {c.get('new_listing', 0)} new vehicle(s), "
+           f"{c.get('new_source_for_vin', 0)} new link(s) for vehicles you already had, {c.get('price_drop', 0)} price drop(s).")
     st.success(msg)
     common.flash(msg)
     pend = common.conn().execute("SELECT COUNT(*) FROM match_candidates WHERE status='pending'").fetchone()[0]
@@ -105,7 +105,7 @@ def rivian_block(prefix: str, pages: list[str], url: str | None) -> None:
     parsed = [rivian_page.parse(p) for p in pages]
     st.info(f"**{len(pages)} Rivian Pre-Owned page{'s' if len(pages) != 1 else ''}** — battery, motor, powered "
             "tonneau and warranty dates are saved as verified values; price, miles, location and build are updated.")
-    st.dataframe(pd.DataFrame([{"VIN": p["vin"], "Truck": f"{p['year']} {p['title']}", "Price": p["price"],
+    st.dataframe(pd.DataFrame([{"VIN": p["vin"], "Vehicle": f"{p['year']} {p['title']}", "Price": p["price"],
                                 "Miles": p["miles"], "Pickup": f"{p['city']}, {p['state']}" if p["city"] else "",
                                 "Tonneau": p["tonneau"].title(),
                                 "Warranty": p["warranty"].get("warranty_expiration", "")[:7]} for p in parsed]),
@@ -117,15 +117,15 @@ def rivian_block(prefix: str, pages: list[str], url: str | None) -> None:
             res = rivian_page.apply(common.conn(), page, url)
             added += res["added"]
             updated += not res["added"]
-        common.flash(f"Rivian pages saved: {added} new truck(s), {updated} updated with Rivian's build, tonneau "
+        common.flash(f"Rivian pages saved: {added} new vehicle(s), {updated} updated with Rivian's build, tonneau "
                      "and warranty.")
         st.rerun()
 
 
 def manual_block(prefix: str) -> None:
-    st.caption("Any truck: a Facebook post, a dealer you called, a friend's truck. A URL is stored as a link only.")
+    st.caption("Any vehicle: a Facebook post, a dealer you called, a friend's vehicle. A URL is stored as a link only.")
     defaults = search_targets(common.settings()["collection"])[0]
-    nl = listing_review_form(defaults, f"{prefix}_manual", "manual", "Add truck",
+    nl = listing_review_form(defaults, f"{prefix}_manual", "manual", "Add vehicle",
                              show_claims=False)
     if nl:
         if nl.description:
@@ -189,18 +189,18 @@ def email_block(prefix: str) -> None:
         st.session_state.pop(f"{prefix}_found", None)
 
 
+@st.dialog("Add vehicle", width="large", on_dismiss="rerun")
 def add_truck_panel(inv: pd.DataFrame) -> None:
-    """The '➕ Add a truck' expander at the top of Inventory."""
-    with st.expander("➕ Add a truck (VIN lookup, paste a listing, manual, alert email)"):
-        t = st.tabs(["By VIN", "Paste listing", "Manual", "Alert email"])
-        with t[0]:
-            vin_lookup_block("add", inv)
-        with t[1]:
-            paste_block("add")
-        with t[2]:
-            manual_block("add")
-        with t[3]:
-            email_block("add")
+    """Use the same import and review tools without taking space above the results."""
+    t = st.tabs(["By VIN", "Paste listing", "Manual", "Alert email"])
+    with t[0]:
+        vin_lookup_block("add", inv)
+    with t[1]:
+        paste_block("add")
+    with t[2]:
+        manual_block("add")
+    with t[3]:
+        email_block("add")
 
 
 __all__ = ["add_truck_panel", "email_block", "manual_block", "paste_block", "queries", "save_listings",

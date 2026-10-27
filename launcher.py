@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Truck Finder launcher (Windows, macOS, Linux).
+"""MotorSift launcher (Windows, macOS, Linux).
 
 First run: creates .venv and installs requirements. Later runs: reinstalls only when requirements.txt changes.
 Then starts the app on 127.0.0.1 and opens your browser. If it is already running, just opens the browser.
@@ -59,7 +59,7 @@ def venv_python() -> Path:
 
 
 def say(msg: str) -> None:
-    print(f"[Truck Finder] {msg}", flush=True)
+    print(f"[MotorSift] {msg}", flush=True)
 
 
 def ensure_env() -> None:

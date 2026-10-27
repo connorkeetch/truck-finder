@@ -87,7 +87,8 @@ def test_shortlist_keeps_only_visible_favorites_and_ranks_personal_proof_first(a
     assert any("Need proof" in item.value for item in app.info)
     assert any("Does not meet" in item.value for item in app.warning)
     request = next(item.value for item in app.code if "Ventilated seats" in item.value)
-    assert "window sticker" in request and "payload sticker" in request and "warranty" in request
+    assert "window sticker" in request and "warranty" in request
+    assert "payload sticker" not in request
     assert any("Stored listing:" in item.value and "last seen" in item.value for item in app.caption)
 
 
@@ -155,3 +156,13 @@ def test_checklist_model_prompts_preserve_keys_and_existing_answers(conn):
     assert checklist.items_for({"make": "Rivian", "model": "R1T"}) == checklist.ITEMS
     assert checklist.get(conn, vid)["title"]["note"] == "Seen clean title"
     assert checklist.progress(conn)[vid]["total"] == len(checklist.ITEMS)
+
+
+def test_seller_request_only_asks_for_towing_evidence_when_it_matters():
+    row = {"year": 2024, "make": "Toyota", "model": "Camry", "trim": "LE"}
+    request = shortlist.seller_request(row, [])
+    assert "Toyota Camry" in request and "truck" not in request
+    assert "payload sticker" not in request
+    request = shortlist.seller_request(row, [{"field": "tow_package", "label": "Tow package", "status": "Advertised"}])
+    assert "payload sticker" in request and "vehicle's tow rating" in request
+    assert "payload sticker" in shortlist.seller_request(row, [], tow_required=True)

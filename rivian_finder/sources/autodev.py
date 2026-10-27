@@ -4,13 +4,14 @@ Free plan: 1,000 calls/month, results clamped to 20 per page. Auth: `Authorizati
 """
 from __future__ import annotations
 
+from datetime import date
 from urllib.parse import parse_qsl, urlsplit
 
 from ..extract import extract_attributes, normalize_state, parse_int, structured_truck_specs
 from ..geo import usable_coords
 from ..models import FetchResult, NormalizedListing, SourceError
 from ..trims import excluded_trim, standard_range
-from .base import BudgetExhausted, HttpSourceAdapter, collection_scopes, matches_target, scope_hash
+from .base import BudgetExhausted, HttpSourceAdapter, matches_target
 
 BASE_URL = "https://api.auto.dev"
 
@@ -19,7 +20,7 @@ def build_params(scope: dict) -> dict:
     params = {
         "vehicle.make": scope.get("make", "Rivian"),
         "vehicle.model": scope.get("model", "R1T"),
-        "vehicle.year": f"{scope.get('year_min', 2022)}-{scope.get('year_max', 2026)}",
+        "vehicle.year": f"{scope.get('year_min', 2000)}-{scope.get('year_max', date.today().year + 1)}",
         "retailListing.price": f"1-{int(scope.get('max_price', 90000))}",
         "retailListing.miles": f"0-{int(scope.get('max_miles', 80000))}",
         "sort": "updatedAt.desc",
@@ -100,46 +101,10 @@ class AutoDevAdapter(HttpSourceAdapter):
         return {"Authorization": f"Bearer {self.api_key}", "Accept": "application/json"}
 
     def fetch(self, scope: dict) -> FetchResult:
-        scopes = collection_scopes(scope, self.key)
-        max_calls = max(int(scope.get("max_pages_per_run", 40)), 0)
-        before = self.calls
-        listings, notes, errors = [], [], []
-        complete = True
-        had_result = False
-        for index, query_scope in enumerate(scopes):
-            remaining = max_calls - (self.calls - before)
-            if scope.get("searches") is not None:
-                allowance = (remaining + len(scopes) - index - 1) // (len(scopes) - index)
-            else:
-                # Preserve the existing Rivian priority until the user configures custom searches.
-                allowance = min(max_calls, max(1, max_calls // 4)) if index < len(scopes) - 1 else remaining
-            self.set_call_limit(allowance)
-            try:
-                result = self._fetch_scope(query_scope)
-            except SourceError as e:
-                if len(scopes) == 1:
-                    raise
-                complete = False
-                errors.append(str(e))
-                continue
-            had_result = True
-            listings.extend(result.listings)
-            notes.extend(result.notes)
-            complete = complete and result.complete
-            if result.error:
-                errors.append(result.error)
-        if errors and not had_result:
-            raise SourceError("; ".join(errors))
-        shash = scope_hash({"src": self.key, "queries": [build_params(s) for s in scopes],
-                            **({"excluded_trims": scope["excluded_trims"]} if scope.get("excluded_trims") else {}),
-                            **({"exclude_standard_range": True} if scope.get("exclude_standard_range") else {})})
-        return FetchResult(listings, complete, shash, self.calls - before, notes, "; ".join(errors) or None)
+        return self._fetch_scopes(scope, build_params)
 
     def _fetch_scope(self, scope: dict) -> FetchResult:
         params = build_params(scope)
-        shash = scope_hash({"src": self.key, **{k: v for k, v in params.items() if k != "limit"},
-                            **({"excluded_trims": scope["excluded_trims"]} if scope.get("excluded_trims") else {}),
-                            **({"exclude_standard_range": True} if scope.get("exclude_standard_range") else {})})
         max_pages = int(scope.get("max_pages_per_run", 40))
         listings: list[NormalizedListing] = []
         notes: list[str] = []
@@ -211,8 +176,7 @@ class AutoDevAdapter(HttpSourceAdapter):
             notes.append(f"Skipped {skipped_standard} Standard Range listings.")
         if not listings and pages == 1 and complete:
             notes.append(f"Auto.dev returned no eligible {scope.get('model', 'R1T')} listings for this scope.")
-        return FetchResult(listings=listings, complete=complete, scope_hash=shash, api_calls=self.calls,
-                           notes=notes, error=error)
+        return FetchResult(listings=listings, complete=complete, notes=notes, error=error)
 
     def lookup_vin(self, vin: str) -> NormalizedListing | None:
         """Single-VIN lookup. Returns the latest stored listing, including removedAt for delisted vehicles."""

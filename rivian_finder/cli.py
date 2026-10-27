@@ -52,7 +52,7 @@ def _notify(log, conn, settings, run_ids: list[int], text: str) -> None:
     count = sum(a["count"] for a in found)
     if not (count or (settings.get("alerts") or {}).get("notify_when_nothing")):
         return
-    titles = [a["title"] for a in found if a["count"]] or [found[0]["title"] if found else "Truck Finder: no changes"]
+    titles = [a["title"] for a in found if a["count"]] or [found[0]["title"] if found else "MotorSift: no changes"]
     lines = [line for a in found for line in a["lines"]]
     ok, detail = notifier.notify(" · ".join(titles), "\n".join(lines) or text[:200], APP_URL)
     log.info("notification %s: %s %s", "sent" if ok else "failed", titles[0], detail)
@@ -122,7 +122,7 @@ def main(argv: list[str] | None = None) -> int:
         for url in summary["problems"]:
             print("  dead/moved:", url)
         return 0
-    ok, detail = notifier.notify("Truck Finder", "Test notification — alerts are working.", APP_URL)
+    ok, detail = notifier.notify("MotorSift", "Test notification — alerts are working.", APP_URL)
     print("sent" if ok else f"failed: {detail}")
     return 0 if ok else 1
 

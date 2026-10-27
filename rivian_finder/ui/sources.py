@@ -42,21 +42,40 @@ def render() -> None:
     s = common.settings()
     st.title("Sources")
     tabs = st.tabs(["Automatic connectors", "Saved searches", "Email alerts", "Assisted capture", "Manual entry",
-                    "CSV / JSON import", "Review duplicates", "Diagnostics"])
+                    "CSV / JSON import", "Review duplicates", "Diagnostics", "Tools"],
+                   default=st.session_state.pop("sources_section", None))
+
+    with tabs[8]:
+        common.tools_panel()
 
     # ------------------------------------------------------------ automatic
     with tabs[0]:
-        st.write("Authorized APIs only. A connector that fails or is incomplete never marks listings as missing.")
-        for src in services.available_sources(c):
+        available = services.available_sources(c)
+        st.write("Connect a listing provider, choose your makes and models, then refresh the brands you want. Cars, SUVs, vans, and trucks use the same search workflow.")
+        with st.expander("Connect a provider and run your first search", expanded=not any(
+                src["configured"] for src in available if src["key"] in services.API_SOURCES)):
+            st.markdown("1. Get an API Key using the provider instructions below; either provider is enough.\n"
+                        "2. Save the key in **Settings → API credentials**. Check that the provider is enabled here.\n"
+                        "3. Save one **Make | Model** per line in **Settings → Collection scope** and enter your home ZIP under **Location** for radius searches.\n"
+                        "4. Choose **Refresh listings**, select several brands or **All brands**, then **Start search**. Inventory filters only change saved results.")
+            with st.container(horizontal=True, gap="small"):
+                for section, label in (("API credentials", "Set up API keys"), ("Collection scope", "Choose makes & models")):
+                    if st.button(label, key="sources_setup_" + section):
+                        st.session_state["settings_section"] = section
+                        st.switch_page(st.session_state["_pages"]["settings"])
+            st.caption("Without an API account, use Manual entry, CSV / JSON import, or the offline demo. A failed or incomplete refresh never marks unseen listings missing.")
+        for src in available:
             with st.container(border=True):
                 a, b, d = st.columns([3, 1, 1])
-                status = "ready" if src["configured"] else "not configured"
+                status = ("key configured" if src["configured"] else "API key missing") if src["key"] in services.API_SOURCES else "ready"
                 a.markdown(f"**{src['name']}** — {status}")
                 if not src["configured"]:
                     a.caption(src["reason"])
                 if src["key"] in services.API_SOURCES:
-                    a.caption(f"API calls this month: {queries.api_calls_this_month(c, src['key'])}"
-                              + (" of 1,000 (free plan)" if src["key"] == "autodev" else " of 500 (free plan)"))
+                    a.caption(f"App requests this month: {queries.api_calls_this_month(c, src['key'])} of {services.API_CAPS[src['key']]:,} local safety budget. Provider account limits also apply.")
+                    a.caption("Key presence is checked here. Your first refresh verifies provider access.")
+                    with a.expander("How to get an API Key"):
+                        common.api_key_help(src["key"])
                 enabled = b.toggle("Enabled", src["enabled"], key=f"en_{src['key']}")
                 if enabled != src["enabled"]:
                     with c:
@@ -64,10 +83,10 @@ def render() -> None:
                     st.rerun()
                 if d.button("Run now", key=f"run_{src['key']}", disabled=not src["configured"]):
                     common.search_dialog([src["key"]])
-        if st.button("▶ Run all enabled connectors", type="primary"):
+        if st.button("Refresh listings", type="primary"):
             common.search_dialog()
         with st.expander("Photos"):
-            st.write("One photo per truck is saved as a small thumbnail during each Run Search (from the image link "
+            st.write("One photo per vehicle is saved as a small thumbnail during each refresh (from the image link "
                      "the provider supplies). Use this to fetch any that are missing now.")
             if st.button("Fetch missing photos"):
                 from .. import photos
@@ -225,7 +244,7 @@ def render() -> None:
                                   else (cand["candidate_vehicle_id"], cand["vehicle_id"]))
                     dedup.merge_vehicles(c, keep, gone)
                     st.rerun()
-                if x2.button("Different trucks", key=f"r_{cand['id']}"):
+                if x2.button("Different vehicles", key=f"r_{cand['id']}"):
                     dedup.reject_candidate(c, cand["id"])
                     st.rerun()
 

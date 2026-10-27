@@ -10,11 +10,11 @@ Good first tasks are marked 🟢.
 
 | # | What | Why | Suggested fix |
 |---|---|---|---|
-| R2 | 🟢 No screenshot in the README | A picture of the Inventory cards sells the project in seconds | Run with demo data in a throwaway data folder, capture Inventory + vehicle details, save under `docs/images/` |
+| R2 | Done: synthetic screenshots in the README | Inventory, vehicle details, and phone layout are shown from an isolated demo workspace | Keep `docs/images/` screenshots current when the UI changes |
 | R3 | Turn on GitHub **private vulnerability reporting** | [`SECURITY.md`](../SECURITY.md) tells people to use it | Repository **Settings → Code security** |
-| R4 | 🟢 Python version is stated three ways | README says 3.12. `launcher.py` accepts 3.10+. TROUBLESHOOTING says "3.10+". CI tests only 3.12. | Either require 3.12 in `launcher.py`, or add 3.10/3.11 to the CI matrix and document "3.10+" |
+| R4 | 🟢 Launcher accepts untested Python versions | Docs recommend 3.12. `launcher.py` accepts 3.10+, but CI tests only 3.12. | Either require 3.12 in `launcher.py`, or verify and document the broader support matrix |
 | R5 | 🟢 CI doesn't test macOS | `run.sh` and `scripts/create_mac_launcher.sh` are shipped for macOS | Add `macos-latest` to `.github/workflows/tests.yml` |
-| R6 | No version number or changelog | Users can't tell what changed between pulls. The extension says 1.1.0, but the app has no version. | Add `__version__` in `rivian_finder/__init__.py`, a `CHANGELOG.md`, and Git tags |
+| R6 | Prepare the first versioned beta release | `__version__ = "0.2.0b1"` and an unreleased [changelog](../CHANGELOG.md) are present; a published release has not been verified | Complete release checks, then create the matching tag and release notes |
 | R7 | 🟢 No `CODE_OF_CONDUCT.md` | GitHub's community checklist expects one | Add the Contributor Covenant |
 
 ## Bugs
@@ -43,20 +43,18 @@ loose matching in B1. Change it to `yes`. While you're there, add a non-Rivian r
 ### B3. `RIVIAN_FINDER_PORT` in `.env` is ignored by the launcher
 
 `launcher.py` reads only `RIVIAN_FINDER_DATA_DIR` from `.env`. `PORT` and `NO_BROWSER` come from the real
-environment. But `.env.example` and TROUBLESHOOTING both say to set the port in `.env`. Worse, the app *does*
-load `.env`, so **Settings → Phone access** shows the `.env` port while the server runs on 8501.
+environment. `.env.example` suggests setting the port in `.env`, but the launcher will still use its shell
+environment or default. The app *does* load `.env`, so **Settings → Phone access** can show a different port
+from the running server. The configuration/troubleshooting guides now explain the workaround.
 
 Fix: have `launcher.py` parse all `RIVIAN_FINDER_*` keys from `.env` (it already has the parsing loop in
 `data_dir()`).
 
-### B4. "Full JSON export" leaves out the checklist and contact log
+### B4. JSON export omission — fixed in the 0.2.0 beta preparation
 
-`backup.py` → `EXPORT_TABLES` was written before migrations 003–006. It skips `checklist` and `contacts`
-(data you typed yourself), plus `link_checks`, `recalls` and `api_usage`. Restoring from a JSON export silently
-loses checklist items and seller-contact history.
-
-Fix: build the list from `sqlite_master` (minus `schema_migrations`), or add the missing tables and a test that
-fails when a new table isn't exported.
+`backup.py` → `EXPORT_TABLES` now includes checklist, contacts, API usage, recalls, link checks, and email-inbox
+records. Regression coverage checks that application tables are exported and that the added records survive
+an export/import round trip. Older exports cannot recover records that were never included.
 
 ### B5. Old manual backups get pruned
 
@@ -65,13 +63,11 @@ fails when a new table isn't exported.
 
 Fix: prune only `*_auto.db`, or keep manual backups separately.
 
-### B6. Default model-year range already excludes 2027 models
+### B6. Fixed: next-model-year searches
 
-`config.DEFAULT_SETTINGS` sets `year_max: 2026` for filters and collection. `sources/autodev.build_params()`
-defaults to 2026 too. The year sliders in `ui/inventory.py` and `ui/settings_page.py` top out at 2027.
-Most model-year 2027 vehicles go on sale during 2026, so new users miss them by default.
-
-Fix: compute the default and slider maximum from `date.today().year + 1`.
+New workspaces and provider fallback ranges include the current year plus one. The year sliders grow with
+the current year and any saved upper limit. Explicit year limits in existing workspaces are preserved.
+Regression tests cover 2027 general-vehicle searches and saved-limit compatibility.
 
 ### B7. Seller names with a dash separator swallow the city (verified)
 
@@ -108,9 +104,9 @@ Most of these are latent, but they surprise contributors and can leak into edge 
 | `sources/base.py`, `sources/autodev.py`, `sources/marketcheck.py`, `pipeline.py`, `queries.py` | `"84020"` (Draper, UT) as the fallback ZIP | No fallback: require Home ZIP for radius searches (`services.run_sources` already checks) |
 | `services.add_listing_link()`, `enrich.py`, `queries.filter_checks()` | A vehicle with no make/model is treated as **Rivian R1T** | Leave unknown as unknown. Only apply R1T rules when the make/model says so. |
 | `extract.extract_attributes()` | Text with no detectable make is parsed with Rivian battery rules | Default to generic parsing when the make is unknown |
-| `ui/sources.py` | CSV template downloads as `rivian_listings_template.csv` | 🟢 Rename to `truck_finder_listings_template.csv` |
+| `ui/sources.py` | CSV template downloads as `rivian_listings_template.csv` | 🟢 Use a neutral public filename in a future compatibility pass |
 | `importers/manual.csv_template()` | Template example row is a Draper, UT Rivian | 🟢 Use a neutral example |
-| Package, env vars, keyring service, task folder, capture server header | Named `rivian_finder` / `RIVIAN_FINDER_*` / `rivian-finder` / `RivianFinder` | Accept `TRUCK_FINDER_*` env vars as aliases first. A package rename can come later. |
+| Package, env vars, keyring service, task folder, capture server header | Named `rivian_finder` / `RIVIAN_FINDER_*` / `rivian-finder` / `RivianFinder` | Intentionally retained for compatibility; document the names rather than renaming saved paths or task identifiers |
 | `.streamlit/config.toml` | Comment says "Rivian-ish amber" | 🟢 Cosmetic |
 
 ## Security hardening
@@ -122,7 +118,7 @@ See [`SECURITY.md`](../SECURITY.md) for the current model.
 | Phone-access PIN can be 4 digits, and the 1.5 s delay is per browser session | Opening new sessions in parallel gets around the delay. 10,000 PINs is a small space on a LAN. | Require 6+ digits, and add a global failed-attempt counter with a lockout in `access.py` |
 | On the desktop, the PIN gate trusts any request whose IP Streamlit reports as `None` (local). The hosted version checks a proxy token instead. | A home-made reverse proxy or tunnel in front of the desktop app makes remote users look local | Keep pointing people to the cloud deployment. Optionally require the PIN whenever an `X-Forwarded-For` header is present. |
 | `backup.import_json()` builds `INSERT` column lists from keys in the JSON file | A crafted file could inject SQL into your own database. Low risk because it's your own file. | Check keys against `PRAGMA table_info(<table>)` |
-| `USER_AGENT` has no contact URL | Site owners can't find out who is checking links | 🟢 `TruckFinder/1.0 (+https://github.com/connorkeetch/truck-finder)` |
+| `USER_AGENT` has no contact URL | Site owners can't find out who is checking links | 🟢 Include the public MotorSift name, version, and repository URL |
 
 **Hosted deployment** ([CLOUD_DEPLOYMENT.md](CLOUD_DEPLOYMENT.md)):
 
@@ -136,8 +132,8 @@ See [`SECURITY.md`](../SECURITY.md) for the current model.
 | What | Suggested fix |
 |---|---|
 | Adding a connector means editing five places (see [Architecture](ARCHITECTURE.md#adding-a-listing-source)), and `pipeline.run_source()` hard-codes `("autodev", "marketcheck")` for make/model filtering | A small registry in `sources/__init__.py`: each adapter declares its key, name, env var, monthly cap and whether it is a "search API" |
-| `API_CAPS` (1,000 Auto.dev / 500 MarketCheck) is hard-coded to free-plan quotas | Make the monthly cap a setting so paid-plan users aren't stopped early |
-| No `pyproject.toml`: nothing to `pip install`, no console command, no lint config, even though the code has `# noqa` markers for Ruff | Add `pyproject.toml` with project metadata, a `truck-finder` entry point, and Ruff settings. Run `ruff check` in CI. |
+| `API_CAPS` (1,000 Auto.dev / 500 MarketCheck) is a fixed local safety budget, independent of provider entitlements | Make the local cap a setting for users who have verified their provider package and spending limits |
+| No `pyproject.toml`: nothing to `pip install`, no console command, no lint config, even though the code has `# noqa` markers for Ruff | Add `pyproject.toml` with project metadata, a `motorsift` entry point, and Ruff settings. Run `ruff check` in CI. |
 | On the desktop, scheduled searches are Windows-only | `cloud.Scheduler` already runs searches inside the server process for the hosted version. Reuse it on macOS/Linux while the app is open, or write a `launchd` plist / `systemd --user` timer from **Settings → Alerts**. [Automation](AUTOMATION.md#macos-and-linux) documents cron for now. |
 | `python -m rivian_finder.cli run` always runs every connector and brand | Add `--source` and `--brand` options (`services.run_sources()` already takes them) |
 
@@ -149,8 +145,7 @@ These are in older docs that the new guides didn't rewrite:
   warranty rules). Split it: general features first, then a **Rivian R1T extras** section. Move personal
   observations ("Rivian's own pre-owned listings currently come through MarketCheck without photos") into
   Sources or drop them.
-- **`docs/TROUBLESHOOTING.md`** has a stale "Fixed:" row (distances of ~7,356 mi), provider quota numbers that
-  will go out of date ("5 req/s and 1,000 calls/month"), and says "Python 3.10+". Group the rows into
+- **`docs/TROUBLESHOOTING.md`** has a stale "Fixed:" row (distances of ~7,356 mi). Group the rows into
   Install / Searching / Data / Notifications.
 - **`.env.example`** should say which variables the launcher reads (until B3 is fixed).
 - **Photos**: README says `static/photos/`, USER_GUIDE says `data/photos/`. Both are right (the cache lives in

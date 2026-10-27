@@ -16,8 +16,9 @@ PRIORITIES = {"ignore": "Ignore", "prefer": "Prefer", "must": "Required"}
 
 def profile_editor(settings: dict) -> None:
     profile = {**config.default_settings()["shopping_profile"], **settings.get("shopping_profile", {})}
-    with st.expander("My shopping profile", expanded=not (profile["must_have"] or profile["prefer"] or profile["range_min"] or profile["tow_min"])):
+    with st.expander("My shopping profile"):
         st.caption("Required items need verified evidence. Advertised equipment stays a question to check. Leave preferences empty until you choose what matters.")
+        st.caption("Range and towing targets are optional. Leave them at 0 and ignore equipment that does not apply to your vehicle search.")
         with st.form("shopping_profile"):
             a, b, c, d = st.columns(4)
             range_min = a.number_input("Minimum range (mi, 0 = no target)", 0, 600, int(profile["range_min"]), key="profile_range_min")
@@ -43,14 +44,15 @@ def profile_editor(settings: dict) -> None:
                     st.rerun()
 
 
-def seller_request(row, proof: list[dict]) -> str:
+def seller_request(row, proof: list[dict], tow_required: bool = False) -> str:
     features = [item["label"] for item in proof if item["field"] in matching.FEATURES and item["status"] != "Verified"]
     lines = [f"Hi, I'm interested in the {compare.vehicle_name(row)}" + (f" (VIN {row['vin']})" if row.get("vin") else "") + ".",
              "Could you please send:",
              "- The original window sticker or build sheet for this VIN.",
-             "- A photo of the door-jamb payload sticker and documentation of this truck's tow rating and fitted tow equipment.",
              "- If electric, confirmation of the battery pack and EPA range for this exact configuration.",
              "- The warranty in-service date and remaining coverage dates and mileage limits."]
+    if tow_required or any(item["field"] in ("tow_package", "trailer_brake_controller") for item in proof):
+        lines.append("- A photo of the door-jamb payload sticker and documentation of this vehicle's tow rating and fitted tow equipment.")
     if features:
         lines.append("- VIN-specific evidence confirming: " + ", ".join(features) + ".")
     lines.append("- A written out-the-door quote including mandatory add-ons and delivery costs.")
@@ -79,7 +81,7 @@ def feature_form(c, vid: int, resolved: dict) -> None:
     with st.form(f"shortlist_proof_{vid}_{field}"):
         selected = st.selectbox("Evidence state", STATES, index=STATES.index(state), key=key)
         note = st.text_area("Evidence / source", key=key + "_note", height=80,
-                            placeholder="Seller's listing URL, or what you personally checked on the truck or VIN-specific records")
+                            placeholder="Seller's listing URL, or what you personally checked on the vehicle or VIN-specific records")
         st.caption("Use Verified only for something you personally confirmed. Unknown removes your verified override; earlier source claims remain and may still supply an advertised answer.")
         if st.form_submit_button("Save feature evidence"):
             try:
@@ -95,6 +97,8 @@ def feature_form(c, vid: int, resolved: dict) -> None:
 def render() -> None:
     c, s = common.conn(), common.settings()
     st.title("My shortlist")
+    st.caption("Favorite vehicles in Inventory to keep them here. Use the optional shopping profile to rank requirements "
+               "and preferences, then record evidence before deciding.")
     profile_editor(s)
     f = s["filters"]
     st.caption(f"Saved limits: price {common.money(f['max_price']) if f.get('max_price') else 'any'} · "
@@ -103,7 +107,7 @@ def render() -> None:
     inv = common.inventory(s)
     favorites = inv[inv["favorite"] & ~inv["hidden"]] if not inv.empty else inv
     if favorites.empty:
-        st.info("Favorite trucks in Inventory to build your shortlist. Trucks marked Not interested stay hidden here.")
+        st.info("Favorite vehicles in Inventory to build your shortlist. Vehicles marked Not interested stay hidden here.")
         return
     resolved = attributes.resolve_many(c, favorites["vehicle_id"].astype(int).tolist())
     ranked = [(row, matching.evaluate(row, s, resolved.get(int(row["vehicle_id"]), {}))) for _, row in favorites.iterrows()]
@@ -130,15 +134,15 @@ def render() -> None:
                 st.warning("Does not meet: " + "; ".join(match["match_failures"]))
             if match["match_missing"]:
                 st.info("Need proof: " + "; ".join(match["match_missing"]))
-            if match["match_reasons"]:
-                st.caption("Fits: " + "; ".join(match["match_reasons"]))
             if match["match_preferred"]:
                 st.caption("Preferences: " + "; ".join(match["match_preferred"]))
             with st.expander("Evidence and seller request"):
+                if match["match_reasons"]:
+                    st.caption("Fits: " + "; ".join(match["match_reasons"]))
                 proof = matching.proof_items(row, s, resolved.get(vid, {}))
                 st.dataframe(pd.DataFrame(proof)[["label", "status", "evidence"]].rename(
                     columns={"label": "Item", "status": "Evidence status", "evidence": "Source / evidence"}), hide_index=True)
                 st.caption("Copy this request and edit it before contacting the seller. Nothing is sent from the app.")
-                st.code(seller_request(row, proof), language=None)
+                st.code(seller_request(row, proof, bool(s.get("shopping_profile", {}).get("tow_min"))), language=None)
                 st.caption("Record range, tow capacity and warranty dates under Open details → Verify equipment or Quick verify.")
                 feature_form(c, vid, resolved.get(vid, {}))

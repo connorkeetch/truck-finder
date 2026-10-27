@@ -149,7 +149,7 @@ def test_alert_contents(conn, settings):
     s2 = pipeline.run_search(conn, [a], {})
     out = alerts.collect(conn, s2["run_id"], settings)
     assert out["count"] == 2
-    assert out["title"] == "Truck Finder: 1 new truck, 1 favorite price drop"
+    assert out["title"] == "MotorSift: 1 new vehicle, 1 favorite price drop"
     assert any(l.startswith("★ −$1,500") for l in out["lines"]) and any(l.startswith("New: 2024") for l in out["lines"])
     settings["alerts"] = {**alerts.DEFAULTS, "min_drop": 2000}
     assert alerts.collect(conn, s2["run_id"], settings)["count"] == 1

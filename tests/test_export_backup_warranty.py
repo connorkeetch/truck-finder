@@ -1,9 +1,10 @@
+import json
 from datetime import date
 
 import openpyxl
 from conftest import FakeAdapter, listing, vin
 
-from rivian_finder import backup, db, export_xlsx, pipeline, queries, services, warranty
+from rivian_finder import backup, checklist, db, export_xlsx, pipeline, queries, services, warranty
 from rivian_finder.models import FetchResult
 from rivian_finder.sources.demo import DemoAdapter
 
@@ -106,6 +107,35 @@ def test_backup_restore_and_json(tmp_path):
     backup.restore_db(bpath, live)
     c = db.connect(live)
     assert c.execute("SELECT COUNT(*) FROM listings").fetchone()[0] == 1
+
+
+def test_json_export_covers_schema_and_preserves_shopping_history(conn):
+    with conn:
+        vehicle_id = conn.execute("INSERT INTO vehicles(vin, created_at, updated_at) VALUES (?,?,?)",
+                                  (vin(1), db.utcnow(), db.utcnow())).lastrowid
+    checklist.save(conn, vehicle_id, {"tires": ("problem", "Rear tires need replacing")})
+    checklist.add_contact(conn, vehicle_id, "email", "Example seller", "Requested an itemized quote",
+                          follow_up=date(2026, 11, 1))
+    payload = backup.export_json(conn)
+    exported = json.loads(payload)["tables"]
+    tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")}
+    assert set(exported) == tables - {"schema_migrations"}
+    with db.connect(":memory:") as fresh:
+        counts = backup.import_json(fresh, payload)
+        assert counts["checklist"] == counts["contacts"] == 1
+        assert checklist.get(fresh, vehicle_id)["tires"] == checklist.get(conn, vehicle_id)["tires"]
+        assert checklist.contacts(fresh, vehicle_id) == checklist.contacts(conn, vehicle_id)
+        assert not fresh.execute("PRAGMA foreign_key_check").fetchall()
+
+
+def test_json_import_accepts_older_exports_without_newer_tables(conn):
+    exported = json.loads(backup.export_json(conn))
+    for table in ("api_usage", "recalls", "checklist", "contacts", "link_checks", "email_inbox"):
+        del exported["tables"][table]
+    with db.connect(":memory:") as fresh:
+        counts = backup.import_json(fresh, json.dumps(exported))
+        assert counts["contacts"] == counts["checklist"] == counts["email_inbox"] == 0
+        assert fresh.execute("SELECT COUNT(*) FROM sources").fetchone()[0] == len(exported["tables"]["sources"])
 
 
 def test_purge_demo(conn):

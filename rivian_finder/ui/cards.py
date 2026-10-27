@@ -1,8 +1,8 @@
 """Card view for Inventory: one lightweight HTML component for all trucks (fast), with clicks sent back to Python.
 
-Each card: photo, title, a price tag colored by the deal rating, small icon rows (miles, listed, location, seller,
-battery · EPA range, motor, warranty, monthly, shipping), warning chips, and links. Clicking the photo or title
-opens the truck's details; the checkbox selects it for compare / hide.
+Each card: photo, title, price and deal rating, mileage and location, key specifications, warning chips, and links.
+Cost breakdowns and notes stay in details. Clicking the photo or title opens details; the checkbox selects it for
+compare / hide.
 """
 from __future__ import annotations
 
@@ -69,9 +69,17 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
     out = []
     for r in df.to_dict("records"):
         price, yours = r.get("price"), r.get("your_price")
+        rivian = r.get("make") == "Rivian"
+        range_text = r.get("range_text")
+        range_text = "" if range_text is None or pd.isna(range_text) else range_text
+        battery = "Uncertain" if r.get("battery_uncertain") else r.get("battery")
+        motor = "Uncertain" if r.get("motor_uncertain") else r.get("motor")
+        battery = "" if battery is None or pd.isna(battery) or battery == "Unknown" else battery
+        motor = "" if motor is None or pd.isna(motor) or motor == "Unknown" else motor
+        range_relevant = rivian or bool(battery) or bool(f.get("min_range") or f.get("range_min"))
         chips = []
         if r.get("match_status"):
-            chips.append((f"{r['match_status']} · {int(r.get('match_score') or 0)}/100",
+            chips.append((r["match_status"],
                           "warn" if r["match_status"] == "Does not qualify" else "note"))
         if r.get("title_status") == "branded":
             chips.append(("Branded title", "warn"))
@@ -95,12 +103,10 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
             chips.append((f"🔁 {r['flags']}", "note"))
         if r.get("hidden"):
             chips.append(("Hidden", "muted"))
-        if not r.get("range_text"):
+        if range_relevant and not range_text:
             chips.append(("Range unknown — verify", "note"))
         ends = warranty.ends_text(r.get("warranty_expires"), r.get("warranty_miles_limit"))
         left = (r.get("warranty") or "").split(" (to ")[0] if r.get("warranty_expires") else ""
-        battery = "Uncertain" if r.get("battery_uncertain") else (r.get("battery") or "Unknown")
-        motor = "Uncertain" if r.get("motor_uncertain") else (r.get("motor") or "Unknown")
         drops = int(r.get("price_drops") or 0)
         transport = r.get("transport_cost")
         dist = r.get("distance_mi")
@@ -125,14 +131,15 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
             "location": r.get("location") or "",
             "distance": f"{dist:,.0f} mi away" if dist == dist and dist is not None else "",
             "seller": r.get("sold_by") or r.get("seller") or "",
-            "battery": battery + (f" · {r['range_text']}" if r.get("range_text") else ""),
+            "battery": " · ".join(value for value in (battery or ("Unknown" if rivian else ""), range_text) if value),
             "battery_note": r.get("battery_note") or "",
-            "motor": motor,
-            "tow": f"{r['tow_capacity_lbs']:,.0f} lb tow capacity" if pd.notna(r.get("tow_capacity_lbs")) else "Tow capacity unknown",
+            "motor": motor or ("Unknown" if rivian else ""),
+            "tow": (f"{r['tow_capacity_lbs']:,.0f} lb tow capacity" if pd.notna(r.get("tow_capacity_lbs")) else
+                    "Tow capacity unknown" if rivian or f.get("tow_min") else ""),
             "tow_note": " · ".join(x for x in (r.get("tow_src"), r.get("tow_conf")) if x),
             "warranty": (f"Warranty to {ends}" + (f" · {left} left" if left and left != "Comprehensive expired" else "")
                          if ends else "Warranty: add in-service date" if (r.get("make") or "Rivian") == "Rivian"
-                         else "Warranty: verify this truck's terms"),
+                         else "Warranty: verify this vehicle's terms"),
             "warranty_known": bool(ends),
             "monthly": _money(r.get("est_monthly")) + "/mo" if r.get("est_monthly") == r.get("est_monthly") else "",
             "shipping": _shipping_text(transport, r.get("transport_basis") or ""),
@@ -146,13 +153,10 @@ def payload(df: pd.DataFrame, picks: set[int], f: dict) -> list[dict]:
 ICONS = {
     "tag": '<path d="M20.6 13.4 13.4 20.6a2 2 0 0 1-2.8 0L3 13V3h10l7.6 7.6a2 2 0 0 1 0 2.8Z"/><circle cx="7.5" cy="7.5" r="1.5"/>',
     "gauge": '<path d="M12 14l4-4"/><path d="M3.3 19a10 10 0 1 1 17.4 0"/>',
-    "clock": '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
     "pin": '<path d="M12 21s-7-6.2-7-11a7 7 0 0 1 14 0c0 4.8-7 11-7 11Z"/><circle cx="12" cy="10" r="2.5"/>',
     "store": '<path d="M3 9l1.5-5h15L21 9"/><path d="M4 9v11h16V9"/><path d="M9 20v-6h6v6"/>',
     "battery": '<rect x="2" y="7" width="17" height="10" rx="2"/><path d="M22 11v2"/><path d="M6 10v4M10 10v4"/>',
     "bolt": '<path d="M13 2 4 14h7l-1 8 9-12h-7l1-8Z"/>',
-    "shield": '<path d="M12 3l8 3v6c0 5-3.5 8-8 9-4.5-1-8-4-8-9V6l8-3Z"/>',
-    "dollar": '<path d="M12 2v20"/><path d="M17 6H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>',
     "truck": '<path d="M2 6h11v10H2z"/><path d="M13 9h4l4 4v3h-8"/><circle cx="6" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
     "down": '<path d="M12 5v14"/><path d="m19 12-7 7-7-7"/>',
 }
@@ -163,7 +167,7 @@ CSS = """
 .grid { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, var(--card-min, 540px)), 1fr)); gap:12px; }
 .card { display:flex; background:var(--st-secondary-background-color, #26282d); border:1px solid rgba(255,255,255,.07);
         border-radius:10px; overflow:hidden; color:var(--st-text-color, #e6e6e6); font-family:var(--st-font, sans-serif);
-        font-size:13px; line-height:1.35; }
+        font-size:14px; line-height:1.45; }
 .card.selected { outline:2px solid var(--st-primary-color, #f5a623); }
 .card.hidden { opacity:.6; }
 .photo { position:relative; flex:0 0 var(--photo-w, 210px); background:#111 center/cover no-repeat;
@@ -175,7 +179,6 @@ CSS = """
        display:flex; align-items:center; justify-content:center; cursor:pointer; border:1px solid rgba(255,255,255,.35); }
 .sel.on { background:var(--st-primary-color, #f5a623); border-color:transparent; }
 .sel.on::after { content:"✓"; color:#111; font-weight:700; font-size:14px; }
-.fit { position:absolute; bottom:6px; left:6px; background:rgba(0,0,0,.65); border-radius:4px; padding:1px 6px; font-size:11px; pointer-events:none; }
 .body { flex:1; min-width:0; padding:9px 12px 8px; display:flex; flex-direction:column; gap:4px; }
 .head { display:flex; align-items:center; gap:6px; min-width:0; }
 .title { flex:1; min-width:0; font-size:15px; font-weight:600; color:var(--st-link-color, #f5b94a); cursor:pointer; white-space:nowrap;
@@ -192,9 +195,6 @@ CSS = """
 .tag svg { stroke:#0d1117; }
 .list { color:#9aa0a6; text-decoration:line-through; font-size:12px; }
 .deal { font-size:12px; font-weight:600; }
-.adj { font-size:12.5px; color:#e6e6e6; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.adj b { color:#f5c542; font-weight:600; }
-.muted { color:#9aa0a6; font-size:12px; }
 .row { display:flex; flex-wrap:wrap; gap:4px 14px; color:#c9cdd2; }
 .it { display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
 svg.i { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2; stroke-linecap:round; stroke-linejoin:round;
@@ -209,7 +209,6 @@ svg.i { width:14px; height:14px; fill:none; stroke:currentColor; stroke-width:2;
 .refresh-price_down { background:rgba(46,160,67,.18); color:#9be9a8; border-color:rgba(46,160,67,.5); }
 .refresh-price_up, .refresh-missing { background:rgba(227,179,65,.15); color:#f0c95c; border-color:rgba(227,179,65,.4); }
 .refresh-removed { background:rgba(229,83,75,.15); color:#ffb1ab; border-color:rgba(229,83,75,.45); }
-.notes { color:#b8bcc2; font-style:italic; font-size:12px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .links { display:flex; flex-wrap:wrap; gap:4px 12px; margin-top:auto; padding-top:2px; font-size:12px; }
 .links a, .links button { display:inline-flex; align-items:center; min-width:44px; min-height:44px; padding:0 4px; border:0;
                          background:transparent; font:inherit; color:var(--st-link-color, #f5b94a); text-decoration:none; cursor:pointer; }
@@ -220,8 +219,9 @@ button:focus-visible, a:focus-visible { outline:3px solid var(--st-primary-color
   .grid { grid-template-columns:minmax(0, 1fr); }
   .card { flex-direction:column; }
   .photo { flex:none; width:100%; min-height:0; aspect-ratio:4 / 3; }
+  .photo.no-photo { aspect-ratio:auto; height:64px; }
   .photo-open { min-height:0; }
-  .title, .adj, .notes { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; }
+  .title { white-space:normal; overflow:visible; text-overflow:clip; overflow-wrap:anywhere; }
   .it { white-space:normal; overflow-wrap:anywhere; }
   .body { padding:10px 12px; }
 }
@@ -242,11 +242,11 @@ function card(c) {
     return `<span class="chip refresh-${kind}" role="note" title="${esc(b.detail || b.text)}" aria-label="${esc([b.text, b.detail].filter(Boolean).join(': '))}">${esc(b.text)}</span>`;
   }).join('');
   const link = (u, t) => safeUrl(u) ? `<a href="${safeUrl(u)}" target="_blank" rel="noopener noreferrer">${esc(t)} ↗</a>` : '';
+  const specs = it('battery', c.battery, c.battery_note) + it('bolt', c.motor, 'Motor') + it('truck', c.tow, c.tow_note);
   return `<div class="card${c.selected ? ' selected' : ''}" data-vid="${c.vid}" data-name="${esc(c.title)}">
-    <div class="photo"><button type="button" class="photo-open" data-act="open" aria-label="Open details for ${esc(c.title)}">${photo}</button>
+    <div class="photo${safeUrl(c.photo) ? '' : ' no-photo'}"><button type="button" class="photo-open" data-act="open" aria-label="Open details for ${esc(c.title)}">${photo}</button>
       <button type="button" class="sel${c.selected ? ' on' : ''}" data-act="toggle" role="checkbox"
-        aria-checked="${Boolean(c.selected)}" aria-label="Select ${esc(c.title)} to compare or hide" title="Select to compare or hide"></button>
-      <div class="fit" title="Personal score">personal ${esc(c.fit)}</div></div>
+        aria-checked="${Boolean(c.selected)}" aria-label="Select ${esc(c.title)} to compare or hide" title="Select to compare or hide"></button></div>
     <div class="body">
       <div class="head"><button type="button" class="star${c.fav ? ' on' : ''}" data-act="fav" aria-pressed="${Boolean(c.fav)}"
           aria-label="${c.fav ? 'Remove' : 'Add'} ${esc(c.title)} ${c.fav ? 'from' : 'to'} favorites"
@@ -257,17 +257,11 @@ function card(c) {
         <span class="tag" style="background:${esc(c.deal_color)}" title="${esc(c.deal)}">${icon('tag')}${esc(c.price)}</span>
         ${c.list_price ? `<span class="list" title="List price before your discount">${esc(c.list_price)}</span>` : ''}
         <span class="deal" style="color:${esc(c.deal_color)}">${esc(c.deal)}</span>
-        ${c.vs_market ? `<span class="muted">${esc(c.vs_market)}</span>` : ''}
       </div>
-      ${c.adjusted ? `<div class="adj" title="Your adjusted price: price + shipping − what the features are worth to you">
-        <b>≈ ${esc(c.adjusted)} for you</b> <span class="muted">${esc(c.adjust_note)}</span></div>` : ''}
-      <div class="row">${it('gauge', c.miles)}${it('clock', c.listed)}${it('down', c.drops)}
+      <div class="row">${it('gauge', c.miles)}${it('down', c.drops)}
         ${it('pin', [c.location, c.distance].filter(Boolean).join(' · '))}${it('store', c.seller)}</div>
-      <div class="row">${it('battery', c.battery, c.battery_note)}${it('bolt', c.motor, 'Motor')}
-        ${it('truck', c.tow, c.tow_note)}${it('shield', c.warranty)}${it('dollar', c.monthly, 'Estimated monthly payment')}${it('truck', c.shipping)}</div>
+      ${specs ? `<div class="row">${specs}</div>` : ''}
       ${chips ? `<div class="chips">${chips}</div>` : ''}
-      ${c.match_note ? `<div class="muted" title="${esc(c.match_note)}">${esc(c.match_note)}</div>` : ''}
-      ${c.notes ? `<div class="notes" title="${esc(c.notes)}">“${esc(c.notes)}”</div>` : ''}
       <div class="links">${link(c.seller_url, 'Seller listing')}${!c.seller_url ? link(c.find_url, 'Find seller') : ''}
         ${link(c.carfax_url, 'Carfax')}<button type="button" data-act="open">Details</button></div>
     </div></div>`;
@@ -322,5 +316,5 @@ def _component():
 def render(cards: list[dict], key: str, on_action, size: str = "L"):
     """Mount the card grid; on_action() runs when a card is clicked (read st.session_state[key]['action'])."""
     photo_w = PHOTO_W.get(size, 210)
-    return _component()(key=key, data={"cards": cards, "photo_w": photo_w, "card_min": 330 + photo_w},
+    return _component()(key=key, data={"cards": cards, "photo_w": photo_w, "card_min": 260 + photo_w},
                         on_action_change=on_action)

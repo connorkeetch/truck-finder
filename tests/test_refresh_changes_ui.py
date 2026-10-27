@@ -88,7 +88,7 @@ def links(app):
 
 def test_compact_context_has_no_title_metrics_tables_or_change_tabs(render_app):
     app = render_app(changes(), context_only=True)
-    assert "Latest Run Search:" in text(app) and "partial" in text(app)
+    assert "Latest refresh:" in text(app) and "partial" in text(app)
     assert not app.title and not app.subheader and not app.metric and not app.dataframe and not app.tabs
     assert "Stale session summary" not in text(app)
     assert any("MarketCheck: partial" in item.value and "Incomplete scan" in item.value for item in app.warning)
@@ -153,7 +153,7 @@ def test_retired_source_links_ignore_all_filters_except_demo(render_app, setting
             "is_demo": True, "url": "https://demo.example/truck"}
     result["events"] = pd.concat([result["events"], pd.DataFrame([demo])], ignore_index=True)
     app = render_app(result, inv=pd.DataFrame())
-    assert [tab.label for tab in app.tabs] == ["Recent status changes (2)", "All unavailable trucks (0)"]
+    assert [tab.label for tab in app.tabs] == ["Recent status changes (2)", "All unavailable vehicles (0)"]
     assert links(app) == {"https://dealer.example/chevy", "https://dealer.example/gmc"}
     assert "Chevrolet Silverado EV 4WT" in text(app) and "GMC Sierra EV Denali" in text(app)
     assert "Sold or removed (reported)" in text(app) and "Not seen — sale unconfirmed" in text(app)
@@ -191,7 +191,7 @@ def test_active_again_and_active_elsewhere_do_not_imply_unavailable_trucks(rende
     app = render_app(result, inv=inv)
     assert text(app).count("Active again") == 1
     assert text(app).count("Another source still lists this truck as active.") == 1
-    assert app.tabs[1].label == "All unavailable trucks (0)"
+    assert app.tabs[1].label == "All unavailable vehicles (0)"
     assert len(app.button) == 2
     assert len({button.key for button in app.button}) == 2
     app.button(key="test_retired_event_2_3_open").click().run(timeout=10)
@@ -204,7 +204,7 @@ def test_archive_keeps_hidden_trucks_notes_and_demo_preference(render_app, setti
     inv.loc[0, "status"] = "missing"
     settings["filters"].update(brands=["Rivian"], max_price=1, favorites_only=True, show_demo=False)
     app = render_app({"run": None, "events": pd.DataFrame()}, inv=inv)
-    assert [tab.label for tab in app.tabs] == ["All unavailable trucks (1)", "Recent status changes (0)"]
+    assert [tab.label for tab in app.tabs] == ["All unavailable vehicles (1)", "Recent status changes (0)"]
     assert "Archive 1" in text(app) and "Archive 2" not in text(app)
     assert "Keep this inspection note" in text(app) and "Seller reported removal" in text(app)
     assert "Not seen — sale unconfirmed" in text(app)
@@ -214,7 +214,7 @@ def test_archive_keeps_hidden_trucks_notes_and_demo_preference(render_app, setti
 
 def test_archive_renders_twenty_rows_then_show_more_without_writes(render_app, conn):
     app = render_app({"run": None, "events": pd.DataFrame()}, inv=unavailable_rows(23))
-    assert app.tabs[0].label == "All unavailable trucks (23)"
+    assert app.tabs[0].label == "All unavailable vehicles (23)"
     assert len(links(app)) == 20 and "Archive 21" not in text(app)
     before = conn.total_changes
     app.button(key="test_retired_archive_more").click().run(timeout=10)
@@ -251,7 +251,7 @@ def test_unavailable_truck_survives_next_empty_refresh_and_new_session(render_ap
     pipeline.run_search(conn, [adapter], {})
     second = render_app()
     third = render_app()
-    assert second.tabs[0].label == "All unavailable trucks (1)"
+    assert second.tabs[0].label == "All unavailable vehicles (1)"
     assert second.tabs[1].label == "Recent status changes (0)"
     assert "Saved truck" in text(second) and "Remember my inspection" in text(second)
     assert text(second) == text(third)

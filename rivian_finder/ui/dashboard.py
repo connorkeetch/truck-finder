@@ -15,13 +15,15 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Dashboard")
+    st.caption("Overview of your saved default filters. Save defaults from Inventory or edit Settings → Vehicle filters "
+               "to change what is counted here.")
     refresh = queries.refresh_changes(c)
     refresh_changes.render(c, s, refresh)
 
     inv = queries.attach_refresh_badges(common.inventory(s), refresh)
     if inv.empty:
-        st.info("No vehicles yet. Add an Auto.dev API key in **Settings → API credentials** and press **Run Search**, "
-                "or press Run Search now to load clearly-labeled **synthetic demo data** and explore the app.")
+        st.info("Start in **Inventory**: add a listing manually, or use **Sources** to set up a provider and refresh. "
+                "To explore without an API key, choose **Try demo** on the empty Inventory page.")
         refresh_changes.render_retired(c, s, inv, refresh, key="dash_retired")
         return
     matching = queries.apply_filters(inv, s["filters"])
@@ -44,57 +46,46 @@ def render() -> None:
     missing = int(((in_view["status"] == "missing") & ~in_view["status_reason"].str.startswith("Not re-checked")).sum())
 
     k1, k2, k3, k4, k5 = st.columns(5)
-    k1.metric("Matching vehicles", len(matching), help="Active vehicles passing your current filters")
-    k2.metric("New (7 days)", n_new)
+    k1.metric("Matching vehicles", len(matching), help="Vehicles passing your saved default filters")
+    k2.metric("New listings (7 days)", n_new)
     k3.metric("Price drops (7 days)", n_drop)
-    k4.metric("Missing from last scan", missing, help="Matching trucks not seen in the latest complete scan (not confirmed "
-                                                       "sold). Trucks outside the collection scope aren't counted.")
-    k5.metric("Tonneau listed/confirmed",
-              int(matching["tonneau"].eq("yes").sum()))
+    k4.metric("Missing from last scan", missing, help="Matching vehicles not seen in the latest complete scan (not confirmed "
+                                                       "sold). Vehicles outside the collection scope aren't counted.")
+    k5.metric("Favorites", int(matching["favorite"].sum()), help="Favorites within your saved default filters")
     if inv["is_demo"].any():
         st.caption("⚠️ Includes synthetic demo data (marked DEMO). Purge it in Settings → Backup & data.")
 
     left, right = st.columns([3, 2])
     with left:
-        h1, h2 = st.columns([2, 1.2])
-        h1.subheader("Top matches")
-        with h2:
-            size = common.photo_size_control("dash_photo_size")
-        row_h = common.PHOTO_SIZES[size]
+        st.subheader("Top matches")
+        row_h = 64
         top = queries.sort_inventory(matching, "Personal match").head(10)
         if top.empty:
-            st.write("Nothing matches your filters. Loosen them on the Inventory page.")
+            st.write("Nothing matches your saved default filters. Adjust filters in Inventory and choose Save as my default filters to update this overview.")
         else:
-            show = common.add_photo_column(top)[["photo", "sold_by", "location", "match_status", "match_score", "year", "make", "model", "trim", "price",
-                                                 "deal_label", "miles", "battery", "motor", "tonneau", "warranty",
-                                                 "distance_mi", "est_monthly", "seller_url", "found_on", "favorite",
-                                                 "hidden", "vehicle_id"]].copy()
-            show.insert(2, "updates", [" · ".join(b["text"] for b in badges) for badges in top["refresh_badges"]])
-            show["tonneau"] = show["tonneau"].map(lambda t: f"{common.TONNEAU_ICON.get(t, '')} {t.replace('_', ' ')}")
+            show = top[["price", "miles", "match_status", "deal_label", "sold_by", "location", "favorite",
+                        "hidden", "vehicle_id"]].copy()
+            show.insert(0, "name", [compare.vehicle_name(row) for _, row in top.iterrows()])
+            show["updates"] = [" · ".join(b["text"] for b in badges) for badges in top["refresh_badges"]]
+            actions = st.container()
             ev = st.dataframe(
                 show, hide_index=True, on_select="rerun", selection_mode="multi-row", key=common.table_key("dash_top"),
-                row_height=row_h, height=common.table_height(len(show), row_h),
+                row_height=row_h, height=min(480, common.table_height(len(show), row_h)),
                 column_config={
-                    "photo": st.column_config.ImageColumn("Photo", width=int(row_h * 4 / 3)),
+                    "name": st.column_config.TextColumn("Vehicle", width="medium"),
                     "sold_by": st.column_config.TextColumn("Sold by", width="medium"),
                     "updates": st.column_config.TextColumn("Updates", width="medium"),
                     "favorite": None, "hidden": None,
                     "match_status": st.column_config.TextColumn("My requirements", width="medium"),
-                    "match_score": st.column_config.ProgressColumn("Personal score", min_value=0, max_value=100, format="%d"),
-                    "year": st.column_config.NumberColumn("Year", format="%d"),
                     "price": st.column_config.NumberColumn("Price", format="dollar", step=1),
                     "miles": st.column_config.NumberColumn("Miles", format="%,d"),
-                    "distance_mi": st.column_config.NumberColumn("Dist (mi)", format="%,d"),
-                    "est_monthly": st.column_config.NumberColumn("Est. /mo", format="dollar", step=1),
-                    "tonneau": "Powered tonneau", "vehicle_id": None, "trim": "Trim", "battery": "Battery",
-                    "motor": "Motor", "make": "Brand", "model": "Model", "warranty": "Warranty left", "location": "Location",
-                    "seller_url": st.column_config.LinkColumn("Seller listing", display_text="seller ↗"),
+                    "vehicle_id": None, "location": "Location",
                     "deal_label": "Deal",
-                    "found_on": "Found on",
                 })
             selected = show.iloc[ev.selection.rows] if ev.selection.rows else show.iloc[0:0]
-            common.selection_actions(c, selected, "dash_top")
-            st.caption("Tick a row's checkbox → open, compare, favorite or hide it from the top of the left sidebar. "
+            with actions:
+                common.selection_actions(c, selected, "dash_top")
+            st.caption("Tick a row's checkbox → open, compare, favorite or hide it using the actions above this table. "
                        "Top matches put requirements first, then your saved preferences and room under your budget, mileage and distance limits.")
         st.subheader("Recent changes")
         if ev7.empty:
@@ -110,13 +101,13 @@ def render() -> None:
     with right:
         st.subheader("Inventory mix (matching)")
         if not matching.empty:
-            tab1, tab2, tab3, tab4 = st.tabs(["Price", "Year", "Generation", "Battery"])
+            tab1, tab2, tab3, tab4 = st.tabs(["Price", "Year", "Brand", "Model"])
             with tab1:
                 st.altair_chart(alt.Chart(matching.dropna(subset=["price"])).mark_bar().encode(
                     x=alt.X("price:Q", bin=alt.Bin(step=2500), title="Price ($)"),
-                    y=alt.Y("count():Q", title="Vehicles"), color=alt.Color("generation:N", title="Gen")),
+                    y=alt.Y("count():Q", title="Vehicles"), color=alt.Color("make:N", title="Brand")),
                     width="stretch")
-            for tab, col in ((tab2, "year"), (tab3, "generation"), (tab4, "battery")):
+            for tab, col in ((tab2, "year"), (tab3, "make"), (tab4, "model")):
                 with tab:
                     data = matching[col].astype(str).value_counts().rename_axis(col).reset_index(name="count")
                     st.altair_chart(alt.Chart(data).mark_bar().encode(
@@ -132,7 +123,7 @@ def render() -> None:
                     common.open_vehicle(int(r.vehicle_id))
         flagged = matching[matching["flip"]]
         if not flagged.empty:
-            st.caption(f"🔁 {len(flagged)} matching truck(s) changed dealers or were relisted — see the History flags "
+            st.caption(f"🔁 {len(flagged)} matching vehicle(s) changed dealers or were relisted — see the History flags "
                        "column in Inventory.")
         st.subheader("Source status")
         ss = queries.source_status(c)

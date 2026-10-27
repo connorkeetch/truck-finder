@@ -1,7 +1,7 @@
 """Inventory — the main workspace. Find, filter, compare and add trucks without leaving this page.
 
 The table keeps to columns that help compare trucks. Motor, transport and notes are edited right in it (saved as
-your verified values, kept through every search). Clicking a truck's name opens its full details in a pop-up —
+your verified values, kept through every search). Clicking a vehicle's name opens its full details in a pop-up —
 favorite, not interested, battery, in-service date and warranty live there. The ✓ column selects trucks to
 compare or hide together.
 """
@@ -26,79 +26,124 @@ CARDS_PAGE = 40                    # cards shown before "Show more"
 
 def filter_controls(f: dict, key: str = "inv", trim_options: list[str] | None = None,
                     brand_options: list[str] | None = None, model_options: list[str] | None = None) -> dict:
-    """Render filter widgets initialised from `f`; returns the edited copy."""
+    """Use the same grouped filters in Inventory's sidebar and saved defaults."""
     f = copy.deepcopy(f)
     brands = sorted(set(SUPPORTED_BRANDS if brand_options is None else brand_options) | set(f.get("brands") or []))
-    f["brands"] = st.multiselect("Brands (empty = all trucks)", brands,
-                                  f.get("brands") or [], key=f"{key}_brands")
-    selected_models = f.get("models") or []
-    f["models"] = st.multiselect("Models (empty = all)", sorted(set(model_options or []) | set(selected_models)),
-                                  selected_models, key=f"{key}_models")
-    show_rivian = any(brand.casefold() == "rivian" for brand in (f["brands"] or brands))
-    selected_trims = f.get("trims") or []
-    f["trims"] = st.multiselect("Trims (empty = all)", sorted(set(trim_options or []) | set(selected_trims)),
-                                 selected_trims, key=f"{key}_trims",
-                                 help="Trims from stored inventory, grouped by brand. Collection-scope exclusions still apply.")
-    c1, c2, c3 = st.columns(3)
-    f["deal_types"] = c1.multiselect("Deal rating (empty = all)", deals.DEAL_TYPES, f.get("deal_types") or [],
-                                      key=f"{key}_deal_types",
-                                      help="Based on similar vehicles in your saved inventory. Not rated can mean there is not enough data. Accident warnings remain visible.")
-    f["seller_types"] = c2.multiselect("Seller type (empty = all)", queries.SELLER_TYPES,
-                                        f.get("seller_types") or [], key=f"{key}_seller_types",
-                                        format_func=lambda value: {"private": "Private seller"}.get(value, value.title()))
-    f["price_drops_only"] = c3.checkbox("Only listings with price drops", f.get("price_drops_only", False),
-                                         key=f"{key}_price_drops",
-                                         help="At least one price drop anywhere in the app's recorded history, including before the latest refresh.")
-    f["match_statuses"] = st.multiselect("My requirements (empty = all)", matching.MATCH_STATUSES,
-                                          f.get("match_statuses") or [], key=f"{key}_match_statuses",
-                                          help="Set must-haves and preferences in My shortlist. Unverified equipment needs proof before it meets a requirement.")
-    c1, c2, c3, c4 = st.columns(4)
-    f["min_range"] = c1.number_input("Minimum EPA range (mi, 0 = any)", 0, 600, int(f.get("min_range") or 0),
-                                      key=f"{key}_range")
-    f["include_unknown_range"] = c2.checkbox("Include unknown range", f.get("include_unknown_range", True),
-                                             key=f"{key}_unknown_range",
-                                             help="Unverified range stays visible so good candidates aren't lost. Untick for a strict range filter.")
-    if show_rivian:
-        st.caption("Generation, battery, motor and front-subframe filters apply to Rivians. Other brands use their own listed specifications.")
-    c1, c2, c3, c4 = st.columns(4)
-    f["max_price"] = c1.number_input("Max price ($)", 0, 250000, int(f["max_price"]), 1000, key=f"{key}_price")
-    f["max_miles"] = c2.number_input("Max mileage", 0, 300000, int(f["max_miles"]), 1000, key=f"{key}_miles")
-    f["year_min"], f["year_max"] = c3.slider("Model years", min(1900, int(f["year_min"])), max(2027, int(f["year_max"])), (int(f["year_min"]), int(f["year_max"])),
-                                             key=f"{key}_years")
-    f["max_distance"] = c4.number_input("Max distance from home (mi, 0 = any)", 0, 4000, int(f.get("max_distance") or 0),
-                                        50, key=f"{key}_dist")
-    c1, c2, c3, c4 = st.columns(4)
-    if show_rivian:
-        f["generations"] = c1.multiselect("Rivian generation", GENERATIONS, f["generations"], key=f"{key}_gen")
-        f["batteries"] = c2.multiselect("Rivian battery", BATTERIES, f["batteries"], key=f"{key}_bat",
-                                    help="Trucks whose sources disagree on battery are kept if any claimed pack matches")
-        f["motors"] = c3.multiselect("Rivian motor", MOTORS, f["motors"], key=f"{key}_mot")
-    f["tonneau"] = c4.multiselect("Powered tonneau", list(TONNEAU_STATUSES), f["tonneau"],
-                                  format_func=lambda k: TONNEAU_STATUSES[k], key=f"{key}_ton")
-    c1, c2, c3, c4, c5 = st.columns([3, 1, 1, 1, 1])
-    f["states"] = c1.multiselect("States (empty = nationwide)", US_STATES, f["states"], key=f"{key}_states")
-    if show_rivian:
-        f["subframes"] = c1.multiselect(
-        "Rivian front subframe", list(subframe.LABELS), f.get("subframes") or list(subframe.LABELS),
-        format_func=subframe.LABELS.get, key=f"{key}_subframe",
-        help="Early R1Ts had a welded front subframe that could crack; Rivian switched to a cast one in early 2023. "
-             "Estimated from the VIN (2022 welded, 2024+ cast, 2023 by build serial — 'Unsure' near the switch). "
-             "A welded one may have been replaced with cast under warranty.")
-    f["hide_branded_title"] = c2.checkbox("Hide branded titles", f["hide_branded_title"], key=f"{key}_brand")
-    f["hide_reported_accidents"] = c3.checkbox("Hide reported accidents", f["hide_reported_accidents"], key=f"{key}_acc")
-    f["include_missing"] = c4.checkbox("Show missing/removed", f["include_missing"], key=f"{key}_missing")
-    f["show_hidden"] = c5.checkbox("Show 'not interested'", f.get("show_hidden", False), key=f"{key}_hidden")
-    c1, c2, c3, c4 = st.columns(4)
-    f["near_misses"] = c1.checkbox("Include near misses", f.get("near_misses", True), key=f"{key}_near",
-                                   help="Also show trucks slightly over your max price or miles (marked ⚠ next to the "
-                                        "truck's name; the reason is at the top of its details)")
-    f["near_miss_price_pct"] = c2.number_input("…up to % over max price", 0, 30, int(f.get("near_miss_price_pct", 5)),
-                                               key=f"{key}_nearp")
-    f["near_miss_miles_pct"] = c3.number_input("…up to % over max miles", 0, 50, int(f.get("near_miss_miles_pct", 10)),
-                                               key=f"{key}_nearm")
-    f["count_discounts"] = c4.checkbox("Use my price after discounts", f.get("count_discounts", True), key=f"{key}_disc",
-                                       help="e.g. Carvana's trade-in discount (Settings → Loan assumptions)")
+    with st.expander("Make & model", expanded=True):
+        f["brands"] = st.multiselect("Brands (empty = all vehicles)", brands, f.get("brands") or [], key=f"{key}_brands")
+        f["models"] = st.multiselect("Models (empty = all)", sorted(set(model_options or []) | set(f.get("models") or [])),
+                                      f.get("models") or [], key=f"{key}_models")
+    with st.expander("Budget & location", expanded=True):
+        f["max_price"] = st.number_input("Max price ($, 0 = any)", 0, max(250000, int(f["max_price"])), int(f["max_price"]), 1000, key=f"{key}_price")
+        f["max_miles"] = st.number_input("Max mileage (0 = any)", 0, max(300000, int(f["max_miles"])), int(f["max_miles"]), 1000, key=f"{key}_miles")
+        f["year_min"], f["year_max"] = st.slider("Model years", min(1900, int(f["year_min"])), max(date.today().year + 1, int(f["year_max"])),
+                                                  (int(f["year_min"]), int(f["year_max"])), key=f"{key}_years")
+        f["max_distance"] = st.number_input("Max distance from home (mi, 0 = any)", 0, max(4000, int(f.get("max_distance") or 0)),
+                                             int(f.get("max_distance") or 0), 50, key=f"{key}_dist")
+        f["states"] = st.multiselect("States (empty = nationwide)", US_STATES, f["states"], key=f"{key}_states")
+    with st.expander("Equipment & requirements"):
+        f["trims"] = st.multiselect("Trims (empty = all)", sorted(set(trim_options or []) | set(f.get("trims") or [])),
+                                     f.get("trims") or [], key=f"{key}_trims", help="Trims in stored inventory. Collection-scope exclusions still apply.")
+        f["match_statuses"] = st.multiselect("My requirements (empty = all)", matching.MATCH_STATUSES,
+                                              f.get("match_statuses") or [], key=f"{key}_match_statuses",
+                                              help="Set requirements in My shortlist. Advertised equipment still needs verification.")
+        f["min_range"] = st.number_input("Minimum EPA range (mi, 0 = any)", 0, 600, int(f.get("min_range") or 0), key=f"{key}_range")
+        f["include_unknown_range"] = st.checkbox("Include unknown range", f.get("include_unknown_range", True), key=f"{key}_unknown_range")
+        if any(brand.casefold() == "rivian" for brand in (f["brands"] or brands)):
+            st.caption("These configuration filters apply to Rivian R1Ts.")
+            f["generations"] = st.multiselect("Rivian generation", GENERATIONS, f["generations"], key=f"{key}_gen")
+            f["batteries"] = st.multiselect("Rivian battery", BATTERIES, f["batteries"], key=f"{key}_bat",
+                                             help="Conflicting sources remain eligible if any claimed pack matches.")
+            f["motors"] = st.multiselect("Rivian motor", MOTORS, f["motors"], key=f"{key}_mot")
+            f["subframes"] = st.multiselect("Rivian front subframe", list(subframe.LABELS), f.get("subframes") or list(subframe.LABELS),
+                                             format_func=subframe.LABELS.get, key=f"{key}_subframe",
+                                             help="Estimated from VIN. Verify the installed subframe; warranty replacements can differ.")
+        f["tonneau"] = st.multiselect("Powered tonneau", list(TONNEAU_STATUSES), f["tonneau"],
+                                       format_func=TONNEAU_STATUSES.get, key=f"{key}_ton")
+    with st.expander("Deals & history"):
+        f["deal_types"] = st.multiselect("Deal rating (empty = all)", deals.DEAL_TYPES, f.get("deal_types") or [], key=f"{key}_deal_types",
+                                          help="Based on similar saved vehicles. Accident warnings remain visible.")
+        f["seller_types"] = st.multiselect("Seller type (empty = all)", queries.SELLER_TYPES, f.get("seller_types") or [], key=f"{key}_seller_types",
+                                            format_func=lambda value: {"private": "Private seller"}.get(value, value.title()))
+        f["price_drops_only"] = st.checkbox("Only listings with price drops", f.get("price_drops_only", False), key=f"{key}_price_drops",
+                                              help="Any price drop in recorded history, including before the latest refresh.")
+        f["hide_branded_title"] = st.checkbox("Hide branded titles", f["hide_branded_title"], key=f"{key}_brand")
+        f["hide_reported_accidents"] = st.checkbox("Hide reported accidents", f["hide_reported_accidents"], key=f"{key}_acc")
+        f["include_missing"] = st.checkbox("Show missing/removed", f["include_missing"], key=f"{key}_missing")
+        f["show_hidden"] = st.checkbox("Show 'not interested'", f.get("show_hidden", False), key=f"{key}_hidden")
+    with st.expander("Near misses & pricing"):
+        f["near_misses"] = st.checkbox("Include near misses", f.get("near_misses", True), key=f"{key}_near",
+                                        help="Include vehicles slightly over your price or mileage limit, marked with a warning.")
+        f["near_miss_price_pct"] = st.number_input("…up to % over max price", 0, 30, int(f.get("near_miss_price_pct", 5)), key=f"{key}_nearp")
+        f["near_miss_miles_pct"] = st.number_input("…up to % over max miles", 0, 50, int(f.get("near_miss_miles_pct", 10)), key=f"{key}_nearm")
+        f["count_discounts"] = st.checkbox("Use my price after discounts", f.get("count_discounts", True), key=f"{key}_disc",
+                                            help="Seller discounts from Settings → Loan assumptions.")
     return f
+
+
+FILTER_WIDGETS = {"brands": "brands", "models": "models", "trims": "trims", "deal_types": "deal_types",
+                  "seller_types": "seller_types", "price_drops_only": "price_drops", "match_statuses": "match_statuses",
+                  "min_range": "range", "include_unknown_range": "unknown_range", "max_price": "price", "max_miles": "miles",
+                  "year_min": "years", "year_max": "years", "max_distance": "dist", "states": "states",
+                  "generations": "gen", "batteries": "bat", "motors": "mot", "subframes": "subframe", "tonneau": "ton",
+                  "hide_branded_title": "brand", "hide_reported_accidents": "acc", "include_missing": "missing",
+                  "show_hidden": "hidden", "near_misses": "near", "near_miss_price_pct": "nearp", "near_miss_miles_pct": "nearm",
+                  "count_discounts": "disc", "favorites_only": "favorites_only", "hidden_only": "hidden_only"}
+
+
+def clear_filter_values() -> dict:
+    """Unrestricted shopping criteria; archived and hidden listings keep their separate views."""
+    f = copy.deepcopy(config.DEFAULT_SETTINGS["filters"])
+    f.update(models=[], max_price=0, max_miles=0, year_min=1900, year_max=date.today().year + 1,
+             hide_branded_title=False, near_misses=False)
+    return f
+
+
+def _change_filters(changes: dict | None = None) -> None:
+    f = st.session_state.get("inv_filters", {})
+    if changes is None:
+        changes = clear_filter_values()
+        st.session_state["inv_updates"] = "All listings"
+        st.session_state["inv_search"] = ""
+        st.session_state["_inv_updates"] = "All listings"
+        st.session_state["_inv_search"] = ""
+    st.session_state["inv_filters"] = {**f, **copy.deepcopy(changes)}
+    for field in changes:
+        if field in FILTER_WIDGETS:
+            st.session_state.pop("inv_" + FILTER_WIDGETS[field], None)
+
+
+def _remember_view(key: str) -> None:
+    st.session_state["_" + key] = st.session_state[key]
+
+
+def active_filter_chips(f: dict) -> list[tuple[str, str, dict]]:
+    """Each chip carries the exact changes needed to remove its criterion."""
+    clear = clear_filter_values()
+    chips = []
+    for field, label in (("brands", "Brand"), ("models", "Model"), ("trims", "Trim"), ("states", "State"),
+                         ("deal_types", "Deal"), ("seller_types", "Seller"), ("match_statuses", "Requirements"),
+                         ("generations", "Generation"), ("batteries", "Battery"), ("motors", "Motor"),
+                         ("tonneau", "Tonneau"), ("subframes", "Subframe")):
+        value = f.get(field, clear.get(field, []))
+        if set(value or []) != set(clear.get(field) or []):
+            text = ", ".join(str(x) for x in (value or [])) or "none selected"
+            chips.append((field, f"{label}: {text}", {field: clear.get(field, [])}))
+    for field, label in (("max_price", "Price"), ("max_miles", "Mileage"), ("max_distance", "Distance"), ("min_range", "Range")):
+        if f.get(field):
+            value = f[field]
+            text = f"Price ≤ ${value:,.0f}" if field == "max_price" else f"{label} {'≥' if field == 'min_range' else '≤'} {value:,.0f} mi"
+            chips.append((field, text, {field: 0}))
+    if f.get("year_min", 1900) != 1900 or f.get("year_max", clear["year_max"]) != clear["year_max"]:
+        chips.append(("years", f"Years: {f['year_min']}–{f['year_max']}", {"year_min": 1900, "year_max": clear["year_max"]}))
+    for field, label in (("hide_branded_title", "Clean/unknown title"), ("hide_reported_accidents", "No reported accidents"),
+                         ("price_drops_only", "Price drops"), ("favorites_only", "Favorites"), ("hidden_only", "Hidden only"),
+                         ("include_missing", "Includes unavailable"), ("show_hidden", "Includes hidden"), ("near_misses", "Includes near misses")):
+        if f.get(field):
+            chips.append((field, label, {field: False}))
+    if not f.get("include_unknown_range", True):
+        chips.append(("known_range", "Known range only", {"include_unknown_range": True}))
+    return chips
 
 
 def _close_details():
@@ -109,13 +154,13 @@ def _close_compare():
     st.session_state.pop("compare_open", None)
 
 
-@st.dialog("Truck details", width="large", on_dismiss=_close_details)
+@st.dialog("Vehicle details", width="large", on_dismiss=_close_details)
 def details_dialog(vid: int, note: str = "") -> None:
     c = common.conn()
     s = common.settings()
     inv = common.inventory(s)
     if vid not in set(inv["vehicle_id"]):
-        st.write("That truck isn't available any more.")
+        st.write("That vehicle isn't available any more.")
         return
     if note:
         st.info(note)
@@ -127,7 +172,7 @@ def compare_dialog(ids: list[int]) -> None:
     inv = common.inventory()
     ids = [i for i in ids if i in set(inv["vehicle_id"])]
     if len(ids) < 2:
-        st.write("Select at least two trucks with ✓.")
+        st.write("Select at least two vehicles with ✓.")
         return
     compare_page.render_compare(inv, ids, on_details=_details_from_compare)
 
@@ -191,7 +236,7 @@ COLUMNS = ["pick", "photo", "name", "sold_by", "updates", "location_dist", "matc
            "est_monthly", "transport_edit", "market_text", "miles", "battery_range", "tow_capacity_lbs", "tow_src", "tow_conf", "battery_note", "motor_edit",
            "warranty_ends", "warranty_left", "subframe_label", "notes", "days_listed", "price_drops", "leverage", "generation", "color",
            "flags", "history_report_url", "find_seller_url", "status", "first_seen", "vin", "vehicle_id", "listing_id"]
-LABELS = {"name": "Truck", "sold_by": "Sold by", "updates": "Updates", "location_dist": "Location",
+LABELS = {"name": "Vehicle", "sold_by": "Sold by", "updates": "Updates", "location_dist": "Location",
           "match_status": "My requirements", "match_score": "Personal score", "match_details": "Match details",
           "seller_url": "Seller listing", "link": "Link", "deal_label": "Deal", "adjusted_text": "Adjusted price",
           "adjust_note": "Adjustments", "price_text": "Price", "est_monthly": "Est. /mo",
@@ -208,10 +253,10 @@ LABELS = {"name": "Truck", "sold_by": "Sold by", "updates": "Updates", "location
 def column_config(view: pd.DataFrame, row_h: int) -> dict:
     return {
         "pick": st.column_config.CheckboxColumn("✓", width=40, pinned=True,
-                                                help="Select trucks to compare (2–4) or hide several at once — the "
+                                                help="Select vehicles to compare (2–4) or hide several at once — the "
                                                      "actions appear above the results"),
         "photo": st.column_config.ImageColumn("Photo", width=int(row_h * 4 / 3), pinned=True),
-        "name": st.column_config.ButtonColumn("Truck", width="medium", type="tertiary", pinned=True, alignment="left",
+        "name": st.column_config.ButtonColumn("Vehicle", width="medium", type="tertiary", pinned=True, alignment="left",
                                               key="inv_open_click", on_click=_open_clicked,
                                               args=([int(v) for v in view["vehicle_id"]],),
                                               help="Click for full details · ★ favorite · ⚠ near miss (a little over "
@@ -227,8 +272,8 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
         "link": st.column_config.TextColumn("Link", width=80,
                                             help="Last 'Check listing links' result: ✓ live · ✗ gone · ↪ moved (usually "
                                                  "sold) · ⚠ sold? · ? check = open it yourself (site blocks automated "
-                                                 "checks, or it's a search page). Details in the truck's pop-up."),
-        "deal_label": st.column_config.TextColumn("Deal", help="Price vs. similar trucks in your data"),
+                                                 "checks, or it's a search page). Details in the vehicle's pop-up."),
+        "deal_label": st.column_config.TextColumn("Deal", help="Price vs. similar vehicles in your data"),
         "price_text": st.column_config.TextColumn("Price", width=170, help="Your price after seller discounts that apply "
                                                                 "(e.g. Carvana trade-in), with the list price"),
         "adjusted_text": st.column_config.TextColumn("Adjusted", width=95,
@@ -239,22 +284,22 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
         "transport_edit": st.column_config.NumberColumn("Transport", format="dollar", step=50, min_value=0,
                                                         help="Estimate or 'included by seller'; type your own amount"),
         "market_text": st.column_config.TextColumn("vs market", width=170, help="Asking price minus the market estimate from "
-                                                                     "similar trucks in your data"),
+                                                                     "similar vehicles in your data"),
         "miles": st.column_config.NumberColumn("Miles", format="%,d"),
         "battery_range": st.column_config.TextColumn(
             "Battery · EPA range (mi)", width=190, help="'Uncertain' = sources disagree (never filtered out; settle it in the "
-                                             "truck's details). Range is listed, or the official EPA rating — a span "
+                                             "vehicle's details). Range is listed, or the official EPA rating — a span "
                                              "when wheels or battery are unknown"),
         "battery_note": st.column_config.TextColumn("Battery sources", help="Who says what when sources disagree"),
         "tow_capacity_lbs": st.column_config.NumberColumn("Tow capacity (lb)", format="%,d",
-                                                         help="Listed or verified for this truck. Confirm configuration, tow package and payload before towing."),
+                                                         help="Listed or verified for this vehicle. Confirm configuration, tow package and payload before towing."),
         "tow_src": st.column_config.TextColumn("Tow source"),
         "tow_conf": st.column_config.TextColumn("Tow confidence"),
         "motor_edit": st.column_config.TextColumn("Motor", help="Enter the motor configuration you verified; blank returns to sources."),
         "warranty_ends": st.column_config.TextColumn("Warranty ends", width=130, help="Comprehensive coverage: date or mileage, "
                                                                            "whichever comes first"),
         "warranty_left": st.column_config.TextColumn("Warranty left", width=130, help="Blank until you enter the in-service date "
-                                                                           "or warranty dates in the truck's details"),
+                                                                           "or warranty dates in the vehicle's details"),
         "subframe_label": st.column_config.TextColumn("Front subframe", width="small",
                                                       help="Welded (early R1T) or cast — estimated from the VIN"),
         "notes": st.column_config.TextColumn("Notes", width="large"),
@@ -267,22 +312,62 @@ def column_config(view: pd.DataFrame, row_h: int) -> dict:
     }
 
 
+def _try_demo(c) -> None:
+    from ..pipeline import import_listings
+    from ..sources.demo import demo_listings
+    import_listings(c, demo_listings(1, include_general=True), "demo_import")
+    _change_filters()
+    common.flash("Demo vehicles are synthetic. Your saved searches and defaults are unchanged.", "info")
+
+
+def _onboarding(c) -> None:
+    st.subheader("Find your next vehicle")
+    st.write("Collect listings, compare your options, and keep the evidence in one place.")
+    demo, setup, imports = st.columns(3)
+    with demo.container(border=True):
+        st.markdown("**Explore with sample listings**")
+        st.caption("Try the shopping workflow with clearly labeled synthetic vehicles. No account or API key needed.")
+        if st.button("Try demo", type="primary", key="inv_try_demo"):
+            _try_demo(c)
+            st.rerun()
+    with setup.container(border=True):
+        st.markdown("**Make it yours**")
+        st.caption("Choose makes, models, your home ZIP, and optional provider credentials.")
+        if st.button("Set up my search", key="inv_setup"):
+            st.session_state["settings_section"] = "Collection scope"
+            st.switch_page(st.session_state["_pages"]["settings"])
+    with imports.container(border=True):
+        st.markdown("**Bring your own listings**")
+        st.caption("Import a CSV/JSON file, paste a listing, or add a vehicle manually.")
+        if st.button("Import listings", key="inv_import"):
+            st.session_state["sources_section"] = "CSV / JSON import"
+            st.switch_page(st.session_state["_pages"]["sources"])
+
+
 def render() -> None:
     c = common.conn()
     s = common.settings()
-    st.title("Inventory")
     refresh = queries.refresh_changes(c)
-    refresh_changes.render(c, s, refresh)
     inv = queries.attach_refresh_badges(common.inventory(s), refresh)
-    add_truck.add_truck_panel(inv)
+    with st.container(horizontal=True, vertical_alignment="center", gap="small"):
+        st.title("Inventory")
+        if st.button("Add vehicle", key="inv_add", icon=":material/add:"):
+            add_truck.add_truck_panel(inv)
+        if st.button("Refresh listings", type="primary", key="inv_refresh", icon=":material/refresh:"):
+            common.search_dialog()
+    refresh_changes.render(c, s, refresh, True)
     if inv.empty:
-        st.info("No trucks yet. Press **Run Search** in the sidebar, or add one above.")
+        _onboarding(c)
         refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
         return
 
     if "inv_filters" not in st.session_state:
         st.session_state["inv_filters"] = copy.deepcopy(s["filters"])
-    with st.expander("Filters", expanded=False):
+    for key, default in (("inv_sort", queries.SORT_OPTIONS[0]), ("inv_search", ""), ("inv_updates", "All listings")):
+        st.session_state.setdefault(key, st.session_state.get("_" + key, default))
+    with st.sidebar:
+        st.subheader("Filters")
+        st.caption("Filter saved listings without making provider calls.")
         try:
             targets = search_targets(s["collection"])
         except ValueError:
@@ -291,37 +376,45 @@ def render() -> None:
         f = filter_controls(st.session_state["inv_filters"], trim_options=inv["trim_filter"].unique().tolist(),
                             brand_options=inv["make"].dropna().tolist() + [t["make"] for t in targets],
                             model_options=inv["model"].dropna().tolist() + [t["model"] for t in targets])
-        b1, b2, _ = st.columns([1, 1, 4])
-        if b1.button("Save as my default filters"):
+        st.session_state.setdefault("inv_favorites_only", f.get("favorites_only", False))
+        f["favorites_only"] = st.toggle("Favorites only", key="inv_favorites_only")
+        st.session_state.setdefault("inv_hidden_only", f.get("hidden_only", False))
+        f["hidden_only"] = st.toggle(f"Hidden only ({int(inv['hidden'].sum())})", key="inv_hidden_only",
+                                      help="Vehicles marked Not interested. Select and Restore to bring them back.")
+        updates = st.selectbox("Updates", ["All listings", "Changed since refresh", "New / new source", "Price changes",
+                                           "Listing status changes"], key="inv_updates", on_change=_remember_view, args=("inv_updates",))
+        with st.popover("Appearance", icon=":material/tune:"):
+            size = common.photo_size_control("inv_photo_size")
+        if st.button("Save as my default filters", key="inv_save_defaults", width="stretch"):
             s["filters"] = f
             common.save_settings(s)
             st.toast("Default filters saved")
-        if b2.button("Reset to defaults"):
-            st.session_state.pop("inv_filters", None)
-            for k in list(st.session_state):
-                if k.startswith("inv_") and k != "inv_search":
-                    st.session_state.pop(k, None)
-            st.rerun()
+        st.button("Reset to saved defaults", key="inv_reset_defaults", width="stretch",
+                  on_click=_change_filters, args=({**clear_filter_values(), **s["filters"]},))
     st.session_state["inv_filters"] = f
-    adjustments_editor(s)
 
-    search = st.text_input("Search — or paste a VIN / listing link to find any truck", key="inv_search",
-                            placeholder="e.g. Blue, Denver, 7FCTGBAL2RN900101, https://www.carvana.com/vehicle/…")
-    n_hidden = int(inv["hidden"].sum())
+    search = st.text_input("Search inventory", key="inv_search", placeholder="Make, model, city, VIN, or listing link…",
+                           label_visibility="collapsed", on_change=_remember_view, args=("inv_search",))
     with st.container(horizontal=True, vertical_alignment="bottom", gap="small"):
-        sort = st.selectbox("Sort by", queries.SORT_OPTIONS, key="inv_sort", width=230)
-        updates = st.selectbox("Updates", ["All trucks", "Changed since refresh", "New / new source", "Price changes",
-                                           "Listing status changes"], key="inv_updates", width=230,
-                               help="Filter recorded changes from the latest refresh and later updates. Other filters still apply. Unavailable trucks are below the results.")
-        f["favorites_only"] = st.toggle("★ Favorites only", f.get("favorites_only", False))
-        f["hidden_only"] = st.toggle(f"🚫 Hidden ({n_hidden})", False, key="inv_hidden_only",
-                                      help="Only trucks marked Not interested. Select and Restore, or restore from the truck's details.")
-        if st.button("▶ Refresh", key="inv_refresh", help="Choose which brands to refresh before starting a search."):
-            common.search_dialog()
-    with st.expander("Display options"):
-        size = common.photo_size_control("inv_photo_size")
+        sort = st.selectbox("Sort by", queries.SORT_OPTIONS, key="inv_sort", width=190, label_visibility="collapsed",
+                            on_change=_remember_view, args=("inv_sort",))
         layout = _view_control(s)
     row_h = common.PHOTO_SIZES[size]
+    chips = active_filter_chips(f)
+    if chips or search or updates != "All listings":
+        with st.container(horizontal=True, gap="small"):
+            for field, label, changes in chips[:2]:
+                st.button(label + " ×", key="inv_chip_" + field, type="tertiary", help="Remove this filter",
+                          on_click=_change_filters, args=(changes,))
+            if len(chips) > 2:
+                with st.popover(f"{len(chips) - 2} more filters"):
+                    for field, label, changes in chips[2:]:
+                        st.button(label + " ×", key="inv_chip_" + field, help="Remove this filter", width="stretch",
+                                  on_click=_change_filters, args=(changes,))
+            if updates != "All listings":
+                st.button(updates + " ×", key="inv_chip_updates", type="tertiary",
+                          on_click=lambda: st.session_state.update(inv_updates="All listings", _inv_updates="All listings"))
+            st.button("Clear all", key="inv_clear_filters", on_click=_change_filters)
 
     # ---- which trucks to show
     lookup = _looks_like_lookup(search)
@@ -330,7 +423,7 @@ def render() -> None:
         df = queries.find_trucks(inv, search)
         shown = set(queries.apply_filters(inv, f)["vehicle_id"])
         if df.empty:
-            st.warning("No truck in your data matches that VIN or link. Use **➕ Add a truck → By VIN** to look it up.")
+            st.warning("No vehicle in your data matches that VIN or link. Use **Add vehicle → By VIN** to look it up.")
         for _, r in df.iterrows():
             why = queries.why_hidden(r, strict)
             if r["vehicle_id"] in shown and not why:
@@ -338,11 +431,11 @@ def render() -> None:
             else:
                 st.info(common.md(f"Found: {common.vehicle_label(r)} — hidden by your filters: " + "; ".join(why)))
         df = df.assign(_near=False)
-        if updates != "All trucks":
-            st.caption("Exact VIN and listing-link lookups also include trucks outside the Updates filter.")
+        if updates != "All listings":
+            st.caption("Exact VIN and listing-link lookups also include vehicles outside the Updates filter.")
     else:
         df = queries.apply_filters(inv, f, search)
-        categories = {"All trucks": [], "Changed since refresh": ["new", "price", "removed", "missing"],
+        categories = {"All listings": [], "Changed since refresh": ["new", "price", "removed", "missing"],
                       "New / new source": ["new"], "Price changes": ["price"],
                       "Listing status changes": ["removed", "missing"]}
         df = queries.filter_refresh_changes(df, categories[updates])
@@ -350,15 +443,11 @@ def render() -> None:
         df = df.assign(_near=~df["vehicle_id"].isin(in_filters))
     df = queries.sort_inventory(df, sort)
     near = int(df["_near"].sum()) if not df.empty else 0
-    hint = (" · **click a photo or name** for full details · ☆ adds a favorite · tick a photo's box to compare or "
-            "hide several"
-            if layout == "Cards" else " · **click a truck's name** for full details · ✓ selects trucks to compare or "
-                                      "hide together · columns with a ✎ pencil are editable · scroll right for more")
-    st.caption(f"Showing **{len(df)}** of {len(inv)} trucks" + (f" (incl. {near} near miss{'es' if near != 1 else ''}, "
-                                                               "marked ⚠)" if near else "") + hint)
+    st.caption(f"**{len(df)}** of {len(inv)} vehicles" + (f" (incl. {near} near miss{'es' if near != 1 else ''}, "
+                                                               "marked ⚠)" if near else "") )
     if df.empty:
         if not lookup:
-            st.info("No trucks match these filters. Unavailable trucks are listed below.")
+            st.info("No vehicles match. Remove a filter above or choose Clear all. Unavailable vehicles are listed below.")
         refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
         return
 
@@ -368,7 +457,9 @@ def render() -> None:
     view = table_view(df, picks)
     if layout == "Cards":
         limit = st.session_state.get("inv_cards_limit", CARDS_PAGE)
-        cards.render(cards.payload(view.head(limit), picks, f), "inv_cards", _on_card_action, size)
+        profile = s.get("shopping_profile") or {}
+        card_filters = {**f, "range_min": profile.get("range_min", 0), "tow_min": profile.get("tow_min", 0)}
+        cards.render(cards.payload(view.head(limit), picks, card_filters), "inv_cards", _on_card_action, size)
         if len(view) > limit:
             if st.button(f"Show {min(CARDS_PAGE, len(view) - limit)} more  ({len(view) - limit} left)", key="inv_more"):
                 st.session_state["inv_cards_limit"] = limit + CARDS_PAGE
@@ -378,8 +469,8 @@ def render() -> None:
 
     # ---- selection actions, details, compare
     csv = view[[col for col in COLUMNS if col in LABELS]].rename(columns=LABELS)
-    csv["Truck"] = csv["Truck"].str.replace(r"\s*›$", "", regex=True)
-    st.download_button("Download this view as CSV", csv.to_csv(index=False), file_name="rivian_inventory_view.csv",
+    csv["Vehicle"] = csv["Vehicle"].str.replace(r"\s*›$", "", regex=True)
+    st.download_button("Download this view as CSV", csv.to_csv(index=False), file_name="motorsift_inventory.csv",
                        mime="text/csv")
     refresh_changes.render_retired(c, s, inv, refresh, key="inv_retired")
     if st.session_state.get("dialog_vid"):
@@ -466,7 +557,7 @@ def adjustments_editor(s: dict) -> None:
 def _view_control(s: dict) -> str:
     """Cards / Table, remembered between visits."""
     current = (s.get("ui") or {}).get("inventory_view", "Cards")
-    choice = st.segmented_control("View", ["Cards", "Table"], default=current, key="inv_view") or current
+    choice = st.segmented_control("View", ["Cards", "Table"], default=current, key="inv_view", label_visibility="collapsed") or current
     if choice != current:
         s.setdefault("ui", {})["inventory_view"] = choice
         common.save_settings(s)
@@ -495,7 +586,6 @@ def _on_card_action() -> None:
 
 def _table(view: pd.DataFrame, row_h: int) -> None:
     editor_key = common.table_key("inv_editor")
-    editor_key = common.table_key("inv_editor")
     rows = [(int(v), None if pd.isna(lid) else int(lid)) for v, lid in zip(view["vehicle_id"], view["listing_id"])]
     st.data_editor(
         view[COLUMNS], hide_index=True, key=editor_key, num_rows="fixed",
@@ -522,10 +612,10 @@ def _selection_box(c, inv: pd.DataFrame, picks: set[int]) -> None:
     """Keep selection actions beside the results, including when the sidebar is closed."""
     chosen = inv[inv["vehicle_id"].isin(picks)]
     with st.container(border=True):
-        st.markdown(f"**{len(chosen)} truck{'s' if len(chosen) != 1 else ''} selected**")
+        st.markdown(f"**{len(chosen)} vehicle{'s' if len(chosen) != 1 else ''} selected**")
         with st.container(horizontal=True, vertical_alignment="center", gap="small"):
             if st.button("⚖ Compare", type="primary", key="inv_sel_cmp",
-                         disabled=not 2 <= len(chosen) <= 4, help="Select 2–4 trucks"):
+                         disabled=not 2 <= len(chosen) <= 4, help="Select 2–4 vehicles"):
                 st.session_state.pop("dialog_vid", None)
                 st.session_state["compare_open"] = True
             if st.button("Clear selection", key="inv_sel_clear"):
@@ -543,7 +633,7 @@ def _selection_box(c, inv: pd.DataFrame, picks: set[int]) -> None:
                           "toggle."):
                 for vid in chosen["vehicle_id"]:
                     hiding.hide_vehicle(c, int(vid), reason, "Hidden from Inventory selection")
-                common.flash(f"Hid {len(chosen)} truck(s): {hiding.reason_label(reason)}. Toggle 🚫 Hidden to see or "
+                common.flash(f"Hid {len(chosen)} vehicle(s): {hiding.reason_label(reason)}. Toggle 🚫 Hidden to see or "
                              "restore them.", "info")
                 _clear_selection()
 

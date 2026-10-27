@@ -2,6 +2,9 @@
 
 Thanks for helping. Bug reports, docs fixes, new import formats and model-specific knowledge are all welcome.
 
+The public name is **MotorSift**. The repository URL, `rivian_finder` package, environment variables, and data
+paths keep their existing names so the rename does not break saved workspaces or scripts.
+
 ## Set up
 
 You need Python 3.12.
@@ -24,26 +27,44 @@ python -m venv .venv
 .venv\Scripts\python -m pytest
 ```
 
-Start the app with `run.bat` / `./run.sh`, or directly:
-
-```bash
-.venv/bin/python -m streamlit run app.py
-```
-
-You don't need API keys. Tests use stubbed providers, and the app has a synthetic demo connector
+You don't need API keys. Tests use stubbed providers, and **Try demo** imports synthetic listings offline
 (see [Quickstart](docs/QUICKSTART.md)).
 
-**Use a throwaway data folder while developing** so you never change your real shopping data:
+### Run an isolated development workspace
+
+Use a throwaway data folder and database before launching the app. Set both paths: an existing
+`RIVIAN_FINDER_DB` in your environment or `.env` would otherwise override the database inside the new data
+folder. Run these commands from the project root.
+
+```powershell
+# Windows PowerShell
+$env:RIVIAN_FINDER_DATA_DIR = Join-Path $env:TEMP "motorsift-dev"
+$env:RIVIAN_FINDER_DB = Join-Path $env:RIVIAN_FINDER_DATA_DIR "rivian_finder.db"
+$env:RIVIAN_FINDER_PORT = "8601"
+.\.venv\Scripts\python.exe .\launcher.py
+```
 
 ```bash
-RIVIAN_FINDER_DATA_DIR=/tmp/tf-dev RIVIAN_FINDER_PORT=8601 ./run.sh
+# macOS / Linux
+export RIVIAN_FINDER_DATA_DIR="${TMPDIR:-/tmp}/motorsift-dev"
+export RIVIAN_FINDER_DB="$RIVIAN_FINDER_DATA_DIR/rivian_finder.db"
+export RIVIAN_FINDER_PORT=8601
+.venv/bin/python launcher.py
 ```
+
+These use the existing launcher and open `http://127.0.0.1:8601`. Choose an unused port: if the launcher finds
+an app already running there, it opens that app instead. Set the port in the shell as shown; the launcher
+reads `RIVIAN_FINDER_PORT` from the environment, not `.env`.
+
+With the same environment still set, `.\run.bat` on Windows or `sh run.sh` on macOS/Linux also starts this
+workspace. Direct Streamlit launches must use the virtual environment's Python and pass
+`--server.address 127.0.0.1 --server.port 8601`; Streamlit does not use the launcher's `RIVIAN_FINDER_PORT` option.
 
 Streamlit doesn't reload changes to the `rivian_finder` package on its own. Restart the app after editing it.
 
 ## Find your way around
 
-[How Truck Finder works](docs/ARCHITECTURE.md) explains the data flow, the core ideas (vehicles vs. listings,
+[How MotorSift works](docs/ARCHITECTURE.md) explains the data flow, the core ideas (vehicles vs. listings,
 claims and confidence, complete scans), and how to add a source or migration.
 [Improvements](docs/IMPROVEMENTS.md) lists known issues and good first tasks.
 
@@ -71,7 +92,7 @@ These protect users' API budgets, their data, and the sites listings come from.
 1. Open an issue first for anything bigger than a small fix, so we can agree on the approach.
 2. Keep pull requests focused: one fix or feature each.
 3. Add or update tests. Bug fixes should include a test that fails without the fix.
-4. Run `python -m pytest` and make sure everything passes.
+4. Run the platform's virtual-environment pytest command above and make sure everything passes.
 5. If you changed what users see or do, update the matching doc in `docs/`.
 6. Describe what changed and how you checked it in the pull request.
 

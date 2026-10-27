@@ -1,4 +1,4 @@
-"""Compare 2–4 trucks side by side."""
+"""Compare 2–4 vehicles side by side."""
 from __future__ import annotations
 
 import pandas as pd
@@ -14,9 +14,10 @@ def render() -> None:
     c = common.conn()
     s = common.settings()
     st.title("Compare")
+    st.caption("Choose 2–4 vehicles, or select them in Inventory and press Compare. Favorites are selected first when available.")
     inv = common.inventory(s)
     if inv.empty:
-        st.info("No vehicles yet.")
+        st.info("Add vehicles in Inventory first. Favorite candidates to make them easier to compare here.")
         return
     visible = queries.apply_filters(inv, dict(s["filters"], include_missing=True))
     wanted = [v for v in st.session_state.get("compare_ids", []) if v in set(inv["vehicle_id"])]
@@ -25,18 +26,18 @@ def render() -> None:
         wanted = favs[:4] if len(favs) >= 2 else visible["vehicle_id"].head(3).tolist()
     pool = inv[inv["vehicle_id"].isin(set(visible["vehicle_id"]) | set(wanted))]
     labels = {int(r["vehicle_id"]): common.vehicle_label(r) for _, r in pool.iterrows()}
-    chosen = st.multiselect("Trucks to compare (up to 4)", list(labels), default=wanted, max_selections=4,
+    chosen = st.multiselect("Vehicles to compare (up to 4)", list(labels), default=wanted, max_selections=4,
                             format_func=lambda i: labels[i], key="compare_select",
                             help="Defaults to your favorites. In Inventory, tick 2–4 rows and press ⚖ Compare.")
     st.session_state["compare_ids"] = chosen
     if len(chosen) < 2:
-        st.write("Pick at least two trucks.")
+        st.write("Pick at least two vehicles.")
         return
     render_compare(inv, chosen)
 
 
 def render_compare(inv, chosen: list[int], on_details=None) -> None:
-    """Side-by-side table for the chosen trucks (used by this page and the Inventory pop-up).
+    """Side-by-side table for the chosen vehicles (used by this page and the Inventory pop-up).
     `on_details(vehicle_id)` replaces the default 'go to Vehicle details page' for the Details buttons."""
     trucks = inv.set_index("vehicle_id").loc[chosen].reset_index()
     compact = st.toggle("Compact comparison", False, key="compare_compact",
@@ -65,9 +66,10 @@ def render_compare(inv, chosen: list[int], on_details=None) -> None:
     styles = best.map(lambda b: BEST_STYLE if b else "")
     st.dataframe(table.style.apply(lambda _: styles, axis=None), height=35 * (len(table) + 1) + 3,
                  column_config={"_index": st.column_config.TextColumn("", width="medium")})
-    st.caption("Green = best among these trucks for that row (lowest price/miles/cost/distance/recalls; highest "
+    st.caption("Green = best among these vehicles for that row (lowest price/miles/cost/distance/recalls; highest "
                "battery, warranty, range, tow capacity; confirmed tonneau, clean title, no accidents). Unknown values are never "
                "highlighted.")
+    st.caption("Unknown means the data is missing. Use Details to verify equipment and history; EV and towing rows may not apply to every vehicle.")
     if compact:
         with st.expander("Payment scenarios"):
             payments_section(trucks)
@@ -80,7 +82,7 @@ def _signed(v: float) -> str:
 
 
 def payments_section(trucks: pd.DataFrame) -> None:
-    """💵 Payments: each truck's monthly payment depending on what your current truck sells for — plus the selling
+    """💵 Payments: each vehicle's monthly payment depending on what your current vehicle sells for — plus the selling
     dealer's trade-in offer when you have one (it also lowers the sales tax). Inputs are remembered."""
     c, s = common.conn(), common.settings()
     fa = finance.FinanceAssumptions.from_settings(s["finance"])
@@ -93,13 +95,16 @@ def payments_section(trucks: pd.DataFrame) -> None:
         st.session_state.setdefault(key, value)
     if "pt_offers" not in st.session_state:
         st.session_state["pt_offers_base"] = pd.DataFrame(saved["trade_offers"], columns=["dealer", "amount"])
-    short = next((w for w in fa.current_vehicle.split() if w.isalpha()), "Your truck")
+    short = fa.current_vehicle.strip() or "Current vehicle"
 
     st.markdown("#### 💵 Payments")
-    c1, c2, c3, c4, c5, c6 = st.columns(6)
+    st.caption("Estimates use Settings → Loan assumptions for tax, fees, down payment and payoff. "
+               "Use 0 for sale proceeds if you are keeping your current vehicle or have none.")
+    c1, c2, c3 = st.columns(3)
     c1.number_input(f"{short} sells for, from", 0.0, 500000.0, step=500.0, format="%.0f", key="pt_sale_from")
     c2.number_input("to", 0.0, 500000.0, step=500.0, format="%.0f", key="pt_sale_to")
     c3.number_input("step", 100.0, 100000.0, step=500.0, format="%.0f", key="pt_sale_step")
+    c4, c5, c6 = st.columns(3)
     c4.number_input("APR (%)", 0.0, 30.0, step=0.25, format="%.2f", key="pt_apr_a")
     c5.number_input("2nd APR (%)", 0.0, 30.0, step=0.25, format="%.2f", key="pt_apr_b")
     c6.number_input("Months", 12, 96, step=6, key="pt_term")
@@ -107,13 +112,12 @@ def payments_section(trucks: pd.DataFrame) -> None:
         edited = st.data_editor(st.session_state["pt_offers_base"], num_rows="dynamic", hide_index=True,
                                 key="pt_offers", width="stretch", column_config={
                                     "dealer": st.column_config.TextColumn("Dealer", required=True,
-                                                                          help="Matched to the truck's seller name"),
+                                                                          help="Matched to the vehicle's seller name"),
                                     "amount": st.column_config.NumberColumn("Offer ($)", min_value=0, step=500,
                                                                             format="dollar")})
-        st.caption(f"Adds a row to that dealer's trucks: they pay off your {_signed(fa.trade_payoff)} loan, and trading "
-                   "in to the selling dealer lowers the taxable price"
-                   + (" (Utah)" if fa.trade_in_reduces_taxable else " — off in Settings → Loan assumptions")
-                   + "; a private sale doesn't.")
+        st.caption(f"Adds a row for that dealer's vehicles. Your {_signed(fa.trade_payoff)} payoff reduces the offer's "
+                   "equity; the offer reduces taxable price only when trade-in tax credit is enabled. Private-sale tax "
+                   "treatment also follows Settings → Loan assumptions. Confirm local rules and the dealer's written quote.")
     offers = [{"dealer": str(r["dealer"]).strip(), "amount": float(r["amount"])} for r in edited.to_dict("records")
               if str(r.get("dealer") or "").strip() and pd.notna(r.get("amount")) and r.get("amount")]
     cfg = {"sale_from": st.session_state["pt_sale_from"], "sale_to": st.session_state["pt_sale_to"],

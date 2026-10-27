@@ -8,16 +8,23 @@ from .. import compare, queries
 from . import common
 
 
-def render(c=None, s: dict | None = None, result=None) -> None:
+def render(c=None, s: dict | None = None, result=None, compact: bool = False) -> None:
     if result is None:
         result = queries.refresh_changes(c if c is not None else common.conn())
     run = result["run"]
     if run is None:
-        st.caption("No refresh yet. Use Run Search to start tracking changes.")
+        st.caption("Saved inventory · No refresh yet" if compact else "No refresh yet. Choose Refresh listings when your sources are ready.")
         return
-    st.caption(f"Latest Run Search: {common.local_time(run.get('started_at'))} · {run.get('status', 'unknown')}")
+    if compact:
+        with st.popover(f"Updated {common.local_time(run.get('started_at'))} · {run.get('status', 'unknown')}", type="tertiary"):
+            render(c, s, result)
+        if run.get("status") in ("failed", "partial") or any(
+                source.get("status") in ("failed", "partial", "skipped") for source in run.get("summary", {}).get("sources", [])):
+            st.warning("The latest refresh was incomplete. Open its status above for source details; missing listings cannot be inferred.")
+        return
+    st.caption(f"Latest refresh: {common.local_time(run.get('started_at'))} · {run.get('status', 'unknown')}")
     if run.get("first_refresh") and run.get("status") != "failed":
-        st.info("This first refresh establishes a baseline. New means first seen in this app, including new source listings for known trucks.")
+        st.info("This first refresh establishes a baseline. New means first seen in this app, including new source listings for known vehicles.")
     if run.get("status") == "failed":
         st.warning("This refresh failed; it is not confirmation that listings are unchanged.")
     sources = run.get("summary", {}).get("sources", [])
@@ -96,7 +103,7 @@ def render_retired(c=None, s: dict | None = None, inv=None, result=None, key: st
         if not trucks:
             st.caption("No sold, removed or missing listings recorded.")
         else:
-            labels = [f"Recent status changes ({len(events)})", f"All unavailable trucks ({len(archive)})"]
+            labels = [f"Recent status changes ({len(events)})", f"All unavailable vehicles ({len(archive)})"]
             labels = labels if not events.empty else labels[::-1]
             tabs = dict(zip(labels, st.tabs(labels)))
             with tabs[f"Recent status changes ({len(events)})"]:
@@ -110,7 +117,7 @@ def render_retired(c=None, s: dict | None = None, inv=None, result=None, key: st
                 if len(events) > recent_limit and st.button("Show more status changes", key=f"{key}_recent_more"):
                     st.session_state[recent_limit_key] = recent_limit + 20
                     st.rerun()
-            with tabs[f"All unavailable trucks ({len(archive)})"]:
+            with tabs[f"All unavailable vehicles ({len(archive)})"]:
                 if archive.empty:
                     st.caption("No trucks currently have only sold, removed or missing listings.")
                 limit_key = f"{key}_archive_limit"

@@ -87,7 +87,7 @@ def make_handler(db_path: str | Path):
                 cid = enqueue(conn, "extension", url, title, text, image)
             finally:
                 conn.close()
-            self._send(200, {"ok": True, "id": cid, "message": "Captured. Review it in Truck Finder → Sources → Assisted capture."})
+            self._send(200, {"ok": True, "id": cid, "message": "Captured. Review it in MotorSift → Sources → Assisted capture."})
 
     return Handler
 

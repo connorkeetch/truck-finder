@@ -20,4 +20,4 @@ def test_saved_deal_seller_and_price_drop_filters_reach_exports_and_alerts(conn,
     assert len(rows) == 2
     assert rows[1][rows[0].index("VIN")] == vin(801)
     notice = alerts.collect(conn, run["run_id"], saved)
-    assert notice["count"] == 1 and "1 new truck" in notice["title"]
+    assert notice["count"] == 1 and "1 new vehicle" in notice["title"]

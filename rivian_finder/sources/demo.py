@@ -89,7 +89,7 @@ def _timeline(i: int) -> dict:
     return {"appear": appear, "disappear": disappear, "comeback": comeback, "drops": drops, "miles": mileage_bump}
 
 
-def demo_listings(run_index: int) -> list[NormalizedListing]:
+def demo_listings(run_index: int, *, include_general: bool = False) -> list[NormalizedListing]:
     out = []
     for i in range(FLEET_SIZE):
         v, t = _vehicle(i), _timeline(i)
@@ -114,6 +114,18 @@ def demo_listings(run_index: int) -> list[NormalizedListing]:
                 source_listing_id=f"demo-{i}-b", url=f"https://example.com/demo-classified/{i}",
                 price=price + 900, seller_name="Demo Classifieds private seller", seller_type="private",
                 city=city, state=state, zip=zip_code, title=f"[DEMO] {v['year']} R1T (classified ad)", **common))
+    if include_general:
+        # General samples are manual imports, outside the Rivian connector's changing timeline.
+        for key, make, model, year, trim, price, miles in (
+                ("camry", "Toyota", "Camry", 2025, "SE", 28900, 12000),
+                ("cr-v", "Honda", "CR-V", 2024, "EX-L", 31900, 18000),
+                ("mach-e", "Ford", "Mustang Mach-E", 2025, "Premium", 34900, 15000)):
+            out.append(NormalizedListing(
+                source_key="demo", import_method="manual", source_listing_id=f"demo-general-{key}",
+                url=f"https://example.com/demo-listing/{key}", year=year, make=make, model=model, trim=trim,
+                price=price, miles=miles, seller_name="Demo Motors", seller_type="dealer", city="Denver",
+                state="CO", zip="80202", title=f"[DEMO] {year} {make} {model} {trim}",
+                description="Synthetic example vehicle for exploring the shopping workflow.", is_demo=True))
     return out
 
 

@@ -75,7 +75,7 @@ def test_empty_filtered_results_still_receive_unfiltered_archive(inventory_app):
     app = run()
     app.selectbox(key="inv_updates").set_value("Listing status changes").run(timeout=10)
     assert not app.exception
-    assert any("No trucks match" in item.value for item in app.info)
+    assert any("No vehicles match" in item.value for item in app.info)
     assert app.session_state["retired_ids"] == frame["vehicle_id"].tolist()
     assert app.session_state["retired_run"] == 2
 

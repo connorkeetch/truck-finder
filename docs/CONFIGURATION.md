@@ -1,6 +1,6 @@
 # Configuration
 
-Most settings live in the app under **More → Settings**. Settings are saved in your local database. A few
+Most settings live in the app under **Settings**. Settings are saved in your local database. A few
 startup options are environment variables.
 
 ## Environment variables
@@ -17,7 +17,8 @@ startup options are environment variables.
 | `RIVIAN_FINDER_CAPTURE_PORT` | `8765` | Port the browser extension sends to |
 | `RIVIAN_FINDER_NO_BROWSER` | unset | Set to `1` so the launcher doesn't open a browser tab |
 
-The names start with `RIVIAN_FINDER_` for historical reasons. They apply to every make and model.
+The `RIVIAN_FINDER_*` and `TRUCK_FINDER_*` names are retained for compatibility. They apply to every make and
+model; the public app name is MotorSift. Renaming the app does not move your database or reset settings.
 
 The hosted version uses a few more variables (`RIVIAN_FINDER_CLOUD`, `TZ`, `TRUCK_FINDER_USER`,
 `TRUCK_FINDER_PASSWORD_HASH`, `TRUCK_FINDER_PROXY_SECRET`). See
@@ -52,6 +53,8 @@ RIVIAN_FINDER_PORT=8502 ./run.sh
 
 ## API keys
 
+For official signup, package selection, and key-generation instructions, see [Get API keys](API_KEYS.md).
+
 You can save keys in either place:
 
 1. **Settings → API credentials** stores them in your OS credential store (Windows Credential Manager, macOS
@@ -60,6 +63,9 @@ You can save keys in either place:
 
 If both are set, the environment wins, and the Settings page tells you which one is in use. Keys are never
 stored in the database and are removed from log files.
+
+On Railway, set `AUTODEV_API_KEY` and/or `MARKETCHECK_API_KEY` in the service's **Variables** and apply the
+updated deployment. Your desktop credential store is not available to the hosted app.
 
 ## Where your data lives
 
@@ -103,7 +109,8 @@ RIVIAN_FINDER_DATA_DIR=~/truck-finder/suvs   RIVIAN_FINDER_PORT=8502 ./run.sh
 | **Location** | Home ZIP and priority states |
 | **API credentials** | Save or remove provider keys, and see which key is in use |
 | **Loan assumptions** | Terms, APRs, tax rate, fees, trade-in, payoff, seller discounts |
-| **Warranty** | Rivian R1T warranty rules (a truck's own dates always win) |
+| **My price adjustments** | Feature values, shipping, and optional range/warranty adjustments |
+| **Warranty** | Rivian R1T warranty rules (a vehicle's own dates always win) |
 | **Export** | Excel export options |
 | **Backup & data** | Back up, restore, JSON export/import, demo data |
 | **Shipping** | Local pickup radius, delivery fees, per-mile rates |
@@ -112,10 +119,10 @@ RIVIAN_FINDER_DATA_DIR=~/truck-finder/suvs   RIVIAN_FINDER_PORT=8502 ./run.sh
 
 **Collection scope vs. Vehicle filters.** Collection scope decides what's *fetched*, and each fetch costs API
 calls. Vehicle filters decide what's *shown*, for free. Keep the collection scope a bit wider than your filters.
-Then tightening a filter never makes trucks look like they disappeared, and you still catch price drops on
-trucks just outside your range.
+Then tightening a filter never makes vehicles look like they disappeared, and you still catch price drops on
+vehicles just outside your range.
 
-Example: you want trucks under $50,000. Collect up to $55,000 and filter at $50,000. A $52,000 truck that drops
+Example: you want vehicles under $50,000. Collect up to $55,000 and filter at $50,000. A $52,000 vehicle that drops
 to $49,500 then shows up as a price drop instead of looking brand new.
 
 ## Phone access

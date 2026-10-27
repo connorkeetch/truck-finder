@@ -8,9 +8,9 @@ attacker could do.
 
 Only the latest code on `main` is supported. Fixes are not backported.
 
-## How Truck Finder is meant to be run
+## How MotorSift is meant to be run
 
-Truck Finder is a single-user app. Each install is one person's shopping workspace. There are two supported
+MotorSift is a single-user app. Each install is one person's shopping workspace. There are two supported
 ways to run it, and they're protected differently.
 
 ### On your computer (the default)

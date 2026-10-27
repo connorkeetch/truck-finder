@@ -1,10 +1,10 @@
-// Truck Finder Capture: runs only when the user clicks the toolbar button (activeTab).
+// MotorSift Capture: runs only when the user clicks the toolbar button (activeTab).
 // It reads the user's current text selection, page title and URL — nothing else — and delivers them to the
 // local app at 127.0.0.1. No background scripts, no navigation, no network requests to the website.
 
 const RECEIVER = "http://127.0.0.1:8765/capture";
 // Sites whose terms forbid feeding their data into other apps, with what to do instead.
-const FACEBOOK_NOTE = "Capture is turned off for Facebook. Please type the details into Truck Finder → Sources → Manual entry.";
+const FACEBOOK_NOTE = "Capture is turned off for Facebook. Please type the details into MotorSift → Sources → Manual entry.";
 const BLOCKED = {
   "facebook.com": FACEBOOK_NOTE, "messenger.com": FACEBOOK_NOTE, "fb.com": FACEBOOK_NOTE,
   "rivianroamer.com": "Capture is turned off for Rivian Roamer (its terms forbid it). Open the truck's rivian.com " +
@@ -45,7 +45,7 @@ async function readSelection(tab) {
       url: location.href,
       title: document.title,
       text: String(window.getSelection() || ""),
-      // the page's own preview image (what link previews show), so you can recognise the truck later
+      // the page's own preview image (what link previews show), so you can recognise the vehicle later
       image: (document.querySelector('meta[property="og:image"]') || {}).content || "",
     }),
   });
@@ -94,9 +94,9 @@ sendBtn.addEventListener("click", async () => {
     });
     const body = await resp.json();
     if (resp.ok) show(body.message || "Captured.", "ok");
-    else show(body.error || `Truck Finder returned ${resp.status}`, "warn");
+    else show(body.error || `MotorSift returned ${resp.status}`, "warn");
   } catch (e) {
-    show("Truck Finder isn't running (or uses a different port). Use 'Copy for pasting' instead, then paste in Sources → Assisted capture.", "warn");
+    show("MotorSift isn't running (or uses a different port). Use 'Copy for pasting' instead, then paste in Sources → Assisted capture.", "warn");
   }
 });
 
@@ -104,7 +104,7 @@ copyBtn.addEventListener("click", async () => {
   const tab = await activeTab();
   const data = await readSelection(tab);
   await navigator.clipboard.writeText(`${data.url}\n${data.title}\n\n${data.text}`);
-  show("Copied. In Truck Finder open Sources → Assisted capture → Paste, put the first line in 'Listing URL' and paste the rest.", "ok");
+  show("Copied. In MotorSift open Sources → Assisted capture → Paste, put the first line in 'Listing URL' and paste the rest.", "ok");
 });
 
 init();

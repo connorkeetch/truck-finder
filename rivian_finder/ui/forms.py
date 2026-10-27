@@ -63,7 +63,7 @@ def listing_review_form(draft: dict, key: str, import_method: str, submit_label:
         tow_default = claim_map.get("tow_capacity_lbs")
         epa_range = c1.number_input("EPA range (mi, 0 = unknown)", 0, 600, int(range_default.value) if range_default else 0)
         tow = c2.number_input("Tow capacity (lb, 0 = unknown)", 0, 40000, int(tow_default.value) if tow_default else 0, 100,
-                              help="Enter this truck's rating from its listing or sticker. Do not use a model's advertised maximum.")
+                              help="Enter this vehicle's rating from its listing or sticker. Do not use a model's advertised maximum.")
         c1, c2, c3 = st.columns(3)
         ton_default = claim_map["tonneau"].value if "tonneau" in claim_map else "unknown"
         tonneau = c1.selectbox("Powered tonneau (per listing)", FORM_TONNEAU,

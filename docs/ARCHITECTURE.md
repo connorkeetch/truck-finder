@@ -1,4 +1,4 @@
-# How Truck Finder works
+# How MotorSift works
 
 This guide is for contributors. It explains how data moves through the app, the few ideas that everything
 else depends on, and how to extend it.
@@ -33,8 +33,8 @@ else depends on, and how to extend it.
 
 ### Vehicle, listing, observation
 
-- A **vehicle** is one physical truck, identified by its VIN.
-- A **listing** is one ad for that vehicle on one site. The same truck on AutoTrader and on the dealer's own
+- A **vehicle** is one physical vehicle, identified by its VIN.
+- A **listing** is one ad for that vehicle on one site. The same vehicle on AutoTrader and on the dealer's own
   site is one vehicle with two listings.
 - An **observation** is the price and mileage of a listing at one point in time. Price history is built from
   these.
@@ -60,7 +60,7 @@ from:
 **Uncertain** with every claim listed, rather than guessing. Filters keep uncertain vehicles visible.
 
 The rule of thumb is **unknown stays unknown**. Don't fill a gap with a model's typical value. An individual
-truck's tow rating is never replaced with the model's advertised maximum.
+vehicle's tow rating is never replaced with the model's advertised maximum.
 
 ### Complete scans and "missing"
 
@@ -142,7 +142,7 @@ removed. See `sources/autodev.py` for a full example with pagination.
 The rules that matter:
 
 - **Set `complete=True` only when you fetched every page.** If you stop early because of a page cap, budget,
-  or error, return `complete=False`. Otherwise the app will mark unseen trucks missing.
+  or error, return `complete=False`. Otherwise the app will mark unseen vehicles missing.
 - **Return only listings inside the scope.** Filter by the make/model you were asked for.
 - **Put equipment in `attributes`** as `AttributeClaim`s with an honest confidence. `extract.extract_attributes()`
   can parse common text for you.
@@ -153,12 +153,17 @@ To show the connector in the app, register it in these places (a registry that r
 welcome change, see [Improvements](IMPROVEMENTS.md)):
 
 1. `services.make_adapter()`: construct it. Add its key to `services.API_SOURCES` so it appears on the
-   Sources page and in Run Search.
+   Sources page and in Refresh listings.
 2. `db.SOURCE_SEED`: add a `(key, name, kind, enabled)` row. It's inserted on next start, including for
    existing databases.
-3. `credentials.KEYS`: add the environment variable name if it needs an API key.
-4. `sources/base.API_CAPS`: add a monthly call cap if the provider has a quota.
-5. `queries.SOURCE_LABELS`: add a short display name.
+3. `credentials.KEYS`: add the API-key environment variable name used by the adapter and the credentials UI.
+4. `sources/base.API_CAPS`: add a monthly local safety budget for every key in `services.API_SOURCES`, even
+   when the provider has no fixed quota. Sources indexes this entry directly; it is not a live subscription limit.
+5. `ui/common.API_SETUP`: add an entry for the same key with all six fields: `name`, `signup`, `account`,
+   `docs`, `plans`, and `steps`. Use official account/key, setup, and plan URLs; `steps` explains how to get a
+   key. Settings iterates this map, and Sources calls `api_key_help()` for every API source, so omitting an
+   entry breaks the source page.
+6. `queries.SOURCE_LABELS`: add a short display name.
 
 Add a test that feeds a saved response from `tests/fixtures/` through `fetch()`. Tests must never call the
 real API.
@@ -175,8 +180,9 @@ Imports never count as complete scans, so they can't mark anything missing.
 
 ## Changing the database
 
-- Add a new file, `rivian_finder/migrations/008_short_name.sql`. Migrations run in filename order the next time
-  the database is opened, and each one runs once.
+- Add a file in `rivian_finder/migrations/` using the next unused zero-padded numeric prefix and a short
+  name (`NNN_short_name.sql`). Check the existing filenames before choosing the number. Migrations run in
+  filename order the next time the database is opened, and each one runs once.
 - Never edit a migration that has already shipped. People's databases have already applied it.
 - For a one-time fix to existing *data* (not schema), add a function to `repairs.py` and call it from
   `run_all()`. Mark it done with a `repair:<key>` preference so it runs once. Make a backup first if it

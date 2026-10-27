@@ -39,7 +39,7 @@ def days_listed(listings: list[dict], now: datetime | None = None) -> tuple[int 
     best_days, since, source = None, None, ""
     for l in listings:
         for iso, label in ((l.get("listed_at"), "provider's first-seen date"),
-                           (l.get("first_seen_at"), "first seen by Truck Finder")):
+                           (l.get("first_seen_at"), "first seen by MotorSift")):
             dt = _parse(iso)
             if dt:
                 d = max((now - dt).days, 0)

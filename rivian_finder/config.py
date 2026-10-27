@@ -4,6 +4,7 @@ from __future__ import annotations
 import copy
 import os
 import platform
+from datetime import date
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -52,7 +53,7 @@ DEFAULT_SETTINGS: dict = {
         "min_range": 0,
         "include_unknown_range": True,
         "year_min": 2000,
-        "year_max": 2026,
+        "year_max": date.today().year + 1,
         "generations": ["Gen 1", "Gen 2", "Unknown"],
         "max_price": 65000,
         "max_miles": 100000,
@@ -83,7 +84,7 @@ DEFAULT_SETTINGS: dict = {
         "model": "R1T",
         "searches": [{"make": "Rivian", "model": "R1T"}],  # editable example, not a model whitelist
         "year_min": 2000,
-        "year_max": 2026,
+        "year_max": date.today().year + 1,
         "max_price": 75000,
         "max_miles": 100000,
         "used_only": True,

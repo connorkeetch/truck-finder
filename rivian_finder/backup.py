@@ -12,7 +12,8 @@ from . import config
 KEEP_BACKUPS = 30
 EXPORT_TABLES = ["sources", "runs", "source_runs", "vehicles", "listings", "observations", "change_events",
                  "vehicle_attributes", "user_overrides", "match_candidates", "merges", "saved_searches", "preferences",
-                 "watchlist", "capture_queue"]
+                 "watchlist", "capture_queue", "api_usage", "recalls", "checklist", "contacts", "link_checks",
+                 "email_inbox"]
 
 
 def backup_db(conn: sqlite3.Connection, directory: Path | None = None, label: str = "manual") -> Path:
@@ -55,7 +56,7 @@ def restore_db(backup_path: Path, db_path: Path | None = None) -> Path:
     check = sqlite3.connect(backup_path)
     try:
         if check.execute("SELECT name FROM sqlite_master WHERE name='vehicles'").fetchone() is None:
-            raise ValueError("that file is not a Truck Finder database")
+            raise ValueError("that file is not a MotorSift database")
     finally:
         check.close()
     if db_path.exists():
@@ -82,7 +83,7 @@ def import_json(conn: sqlite3.Connection, payload: str) -> dict:
     """Load a full JSON export into an EMPTY database (use restore/backup to replace an existing one)."""
     data = json.loads(payload)
     if data.get("format") != "rivian-finder-export":
-        raise ValueError("not a Truck Finder JSON export")
+        raise ValueError("not a MotorSift JSON export")
     if conn.execute("SELECT COUNT(*) FROM vehicles").fetchone()[0]:
         raise ValueError("database is not empty; back it up and start a fresh data folder before importing")
     counts = {}

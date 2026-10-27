@@ -98,6 +98,7 @@ def boot() -> None:
     _upgrade_thumbs()
     st.markdown(
         """<style>
+        [data-testid="stMainBlockContainer"] {padding-top:4.5rem;padding-bottom:2rem;}
         div[data-testid="stMetricValue"] {font-size: 1.6rem;}
         .rf-badge {display:inline-block;padding:1px 8px;border-radius:10px;font-size:0.78rem;margin-right:4px;
                    background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.10);}
@@ -111,14 +112,14 @@ def remote_gate() -> None:
         expected = os.environ.get("TRUCK_FINDER_PROXY_SECRET", "")
         received = st.context.headers.get("X-Truck-Finder-Token", "")
         if not expected or not hmac.compare_digest(received, expected):
-            st.error("Open the private Truck Finder address and sign in to continue.")
+            st.error("Open the private MotorSift address and sign in to continue.")
             st.stop()
         return
     if st.context.ip_address is None or st.session_state.get("remote_ok"):
         return
     from .. import access
     import time
-    st.title("🛻 Truck Finder")
+    st.title("🚗 MotorSift")
     if not access.load().get("lan"):
         st.error("Phone access is turned off. Turn it on in Settings → Phone access on your computer.")
         st.stop()
@@ -287,7 +288,34 @@ def open_vehicle(vehicle_id: int, from_table: str | None = None) -> None:
 
 # ----------------------------------------------------------------- sidebar
 
-@st.dialog("Which trucks should we refresh?")
+API_SETUP = {
+    "autodev": {
+        "name": "Auto.dev", "signup": "https://www.auto.dev/signin",
+        "account": "https://www.auto.dev/dashboard", "docs": "https://docs.auto.dev/v2/getting-started",
+        "plans": "https://www.auto.dev/pricing",
+        "steps": "Create an account and verify your email. In the dashboard, open **API Keys → Create New Key**. Copy the key for vehicle listings.",
+    },
+    "marketcheck": {
+        "name": "MarketCheck", "signup": "https://developers.marketcheck.com/sign-up",
+        "account": "https://developers.marketcheck.com/api-keys", "docs": "https://docs.marketcheck.com/docs/get-started/api/authentication",
+        "plans": "https://www.marketcheck.com/apis/pricing",
+        "steps": "Create a Developers Portal account and subscribe to an API package with inventory-search access, including when using a free trial. Open **API Keys** and generate credentials. Copy the **API Key**; MotorSift does not need the Client Secret.",
+    },
+}
+
+
+def api_key_help(key: str) -> None:
+    """The same provider-specific setup guidance in Settings and Sources."""
+    info = API_SETUP[key]
+    st.markdown(info["steps"])
+    with st.container(horizontal=True, gap="small"):
+        st.link_button("Create account / sign in", info["signup"])
+        st.link_button("Open dashboard / keys", info["account"])
+    st.markdown(f"[Official setup guide]({info['docs']}) · [Current plans]({info['plans']})")
+    st.caption("Check inventory access, quotas, radius, and billing in your provider account. MotorSift's local request budget does not change your plan or count calls from other apps.")
+
+
+@st.dialog("Refresh listings")
 def search_dialog(keys: list[str] | None = None) -> None:
     s = settings()
     try:
@@ -304,6 +332,8 @@ def search_dialog(keys: list[str] | None = None) -> None:
                               format_func=lambda brand: labels.get(brand, brand), key="search_brands",
                               help="Choose one or more configured makes, or All brands for every configured make/model.")
     brands = available if "All brands" in selected else [b for b in selected if b in available]
+    selected_models = sum(t["make"].casefold() in {b.casefold() for b in brands} for t in targets)
+    st.caption(f"{len(brands)} selected brand(s) · {selected_models} make/model search(es). Each model can use separate provider requests; all share your configured request budget.")
     st.caption("Only the selected brands will be refreshed. Your saved price, mileage, distance and range limits still apply.")
     if not brands:
         st.info("Choose at least one brand to start.")
@@ -323,62 +353,56 @@ def search_dialog(keys: list[str] | None = None) -> None:
 
 
 def sidebar() -> None:
-    c = conn()
+    from .. import __version__
     with st.sidebar:
-        st.markdown("### 🛻 Truck Finder")
-        st.session_state["_actions_box"] = st.container()   # filled by pages when table rows are ticked
-        ready = [s for s in services.available_sources(c) if s["enabled"] and s["configured"]]
-        names = ", ".join([s["name"] for s in ready] + (["alert emails"] if services.mailbox_enabled(settings()) else [])
-                          ) or "none"
-        if st.button("▶ Run Search", type="primary", width="stretch",
-                     help=f"Choose brands, then search with enabled, configured connectors: {names}"):
-            search_dialog()
-        st.caption(f"Connectors ready: {names}")
-        if st.button("🔗 Check listing links", width="stretch",
-                     help="Opens each listing link once — only where the site allows automated checks — to find dead "
-                          "or moved pages. Sites that block bots are marked 'check manually', never worked around. "
-                          "Takes a few minutes."):
-            from .. import linkcheck
-            bar = st.progress(0.0, text="Checking links…")
-            summary = linkcheck.check_all(c, progress=lambda d, n: bar.progress(d / max(n, 1), text=f"Checked {d} of {n}"))
-            bar.empty()
-            flash(linkcheck.summary_text(summary) + (" Sort by **Link problems first** to see them." if summary["problems"]
-                                                      else ""), "warning" if summary["problems"] else "success")
-            st.rerun()
-        if st.button("📊 Prepare Excel export", width="stretch"):
-            with st.spinner("Building workbook…"):
-                s = settings()
-                data = export_xlsx.export_bytes(c, s)
-                target = Path(s["export"]["export_dir"]) if s["export"].get("export_dir") else config.EXPORT_DIR
-                target.mkdir(parents=True, exist_ok=True)
-                path = target / f"rivian_finder_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
-                path.write_bytes(data)
-            st.session_state["export_bytes"] = data
-            st.session_state["export_path"] = str(path)
-        if st.session_state.get("export_bytes"):
-            st.download_button("⬇ Download .xlsx", st.session_state["export_bytes"],
-                               file_name=st.session_state["export_path"].split("\\")[-1].split("/")[-1],
-                               mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                               width="stretch")
-            st.caption(f"Also saved to `{st.session_state['export_path']}`")
-        demo = c.execute("SELECT COUNT(*) FROM vehicles WHERE is_demo=1").fetchone()[0]
+        st.markdown("### MotorSift")
+        st.caption(f"Vehicle-shopping workspace · {__version__}")
+        demo = conn().execute("SELECT COUNT(*) FROM vehicles WHERE is_demo=1").fetchone()[0]
         if demo:
-            st.markdown(f"<span class='rf-badge rf-demo'>Includes {demo} synthetic demo vehicles</span>",
-                        unsafe_allow_html=True)
-        st.caption(f"Data: `{config.DB_PATH}`")
+            st.caption(f"Includes {demo} synthetic demo vehicles")
+
+
+def tools_panel() -> None:
+    """Occasional inventory maintenance lives in Sources, away from browsing controls."""
+    c = conn()
+    if st.button("🔗 Check listing links", width="stretch",
+                 help="Opens each listing link once — only where the site allows automated checks — to find dead "
+                      "or moved pages. Sites that block bots are marked 'check manually', never worked around. "
+                      "Takes a few minutes."):
+        from .. import linkcheck
+        bar = st.progress(0.0, text="Checking links…")
+        summary = linkcheck.check_all(c, progress=lambda d, n: bar.progress(d / max(n, 1), text=f"Checked {d} of {n}"))
+        bar.empty()
+        flash(linkcheck.summary_text(summary) + (" Sort by **Link problems first** to see them." if summary["problems"]
+                                                  else ""), "warning" if summary["problems"] else "success")
+        st.rerun()
+    if st.button("📊 Prepare Excel export", width="stretch"):
+        with st.spinner("Building workbook…"):
+            s = settings()
+            data = export_xlsx.export_bytes(c, s)
+            target = Path(s["export"]["export_dir"]) if s["export"].get("export_dir") else config.EXPORT_DIR
+            target.mkdir(parents=True, exist_ok=True)
+            path = target / f"motorsift_{datetime.now():%Y%m%d_%H%M%S}.xlsx"
+            path.write_bytes(data)
+        st.session_state["export_bytes"] = data
+        st.session_state["export_path"] = str(path)
+    if st.session_state.get("export_bytes"):
+        st.download_button("⬇ Download .xlsx", st.session_state["export_bytes"],
+                           file_name=st.session_state["export_path"].split("\\")[-1].split("/")[-1],
+                           mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                           width="stretch")
+        st.caption(f"Also saved to `{st.session_state['export_path']}`")
 
 
 def selection_actions(c, selected, table: str) -> None:
-    """Actions for ticked table rows, shown at the top of the sidebar so they're visible at any scroll position."""
+    """Contextual actions next to the selected results, including on phones."""
     from .. import hiding
     if selected.empty:
         return
-    box = st.session_state.get("_actions_box")
     ids = [int(v) for v in selected["vehicle_id"]]
-    target = box if box is not None else st.container()
-    with target.container(border=True):
+    with st.container(border=True):
         names = [str(n) for n in selected.get("sold_by", selected.get("location", []))][:3]
-        st.markdown(f"**{len(ids)} truck{'s' if len(ids) != 1 else ''} selected**"
+        st.markdown(f"**{len(ids)} vehicle{'s' if len(ids) != 1 else ''} selected**"
                     + (f"  \n<small>{', '.join(names)}{'…' if len(ids) > 3 else ''}</small>" if names else ""),
                     unsafe_allow_html=True)
         if len(ids) == 1 and st.button("🔎 Open details", type="primary", width="stretch", key=f"{table}_open"):
@@ -396,11 +420,11 @@ def selection_actions(c, selected, table: str) -> None:
         reason = st.selectbox("Not interested because", list(hiding.HIDE_REASONS), format_func=hiding.reason_label,
                               key=f"{table}_reason")
         if st.button("🚫 Not interested", width="stretch", key=f"{table}_hide",
-                     help="Hides the truck(s) from Dashboard, Inventory and Excel. 'Title issues' also records "
+                     help="Hides the vehicle(s) from Dashboard, Inventory and Excel. 'Title issues' also records "
                           "the title as branded. Undo: Inventory → 🚫 Hidden → tick → Restore."):
             for vid in ids:
                 hiding.hide_vehicle(c, vid, reason)
-            flash(f"Hid {len(ids)} truck(s): {hiding.reason_label(reason)}. Inventory → 🚫 Hidden shows them.", "info")
+            flash(f"Hid {len(ids)} vehicle(s): {hiding.reason_label(reason)}. Inventory → 🚫 Hidden shows them.", "info")
             _bump(table)
             st.rerun()
         hidden_ids = [int(v) for v, h in zip(selected["vehicle_id"], selected.get("hidden", [])) if h]

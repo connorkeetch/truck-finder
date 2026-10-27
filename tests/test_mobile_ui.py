@@ -18,6 +18,7 @@ def test_cards_can_shrink_and_stack_on_phone_screens():
     assert "grid-template-columns:minmax(0, 1fr)" in phone
     assert "flex-direction:column" in phone
     assert "width:100%" in phone and "aspect-ratio:4 / 3" in phone
+    assert ".photo.no-photo { aspect-ratio:auto; height:64px; }" in phone
     assert "white-space:normal" in phone and "overflow-wrap:anywhere" in phone
     assert "width:44px; height:44px" in cards.CSS
     assert "min-width:44px; min-height:44px" in cards.CSS
@@ -32,7 +33,13 @@ def test_native_card_buttons_preserve_events_and_accessible_state():
 const root = { style: { setProperty() {} } };
 const events = [];
 const name = '2024 Ford <Lightning> "Lariat"';
-mount({data: {cards: [{vid: 9, title: name, fav: false, selected: false}]},
+mount({data: {cards: [{vid: 9, title: name, fav: false, selected: false,
+  price: '$58,000', miles: '12,000 mi', location: 'Draper, UT', battery: 'Large · 328 mi', motor: 'Quad',
+  tow: '11,000 lb tow capacity', deal: 'Good deal', fit: 80, adjusted: '$57,000',
+  adjust_note: 'My adjustment breakdown', warranty: 'Warranty to Apr 2028', monthly: '$810/mo',
+  shipping: '$290 ship', notes: 'Call seller Friday', match_note: 'Verify heated seats',
+  chips: [['Branded title', 'warn'], ['Accident reported', 'warn'], ['Needs verification', 'note']],
+  refresh_badges: [{kind: 'price_down', text: 'Price down $1,000'}]}]},
   parentElement: {querySelector() {return root;}}, setTriggerValue(key, value) {events.push({key, ...value});}});
 function classes() {
   const values = new Set();
@@ -65,6 +72,7 @@ console.log(JSON.stringify({html: root.innerHTML, events, toggle: toggle.attribu
 
     parsed = Controls()
     parsed.feed(data["html"])
+    assert 'class="photo no-photo"' in data["html"]
     assert len(parsed.controls) == 5
     assert all(tag == "button" and attrs["type"] == "button" for tag, attrs in parsed.controls)
     selection = next(attrs for _, attrs in parsed.controls if attrs["data-act"] == "toggle")
@@ -76,6 +84,12 @@ console.log(JSON.stringify({html: root.innerHTML, events, toggle: toggle.attribu
     assert [event["kind"] for event in data["events"]] == ["toggle", "fav", "open"]
     assert all(event["vid"] == 9 and event["key"] == "action" for event in data["events"])
     assert data["events"][0]["on"] is True and data["events"][1]["on"] is True
+    for fact in ("$58,000", "12,000 mi", "Draper, UT", "Large · 328 mi", "Quad", "11,000 lb tow capacity",
+                 "Good deal", "Branded title", "Accident reported", "Needs verification", "Price down $1,000"):
+        assert fact in data["html"]
+    for detail in ("Personal score", "personal 80", "$57,000", "My adjustment breakdown", "Warranty to Apr 2028",
+                   "$810/mo", "$290 ship", "Call seller Friday", "Verify heated seats"):
+        assert detail not in data["html"]
 
 
 def test_inventory_selection_actions_and_refresh_are_available_outside_sidebar(conn, settings, monkeypatch):
@@ -104,7 +118,7 @@ inventory.render()
     assert not app.exception
     assert app.main.button(key="inv_sel_cmp").disabled is False
     assert app.main.button(key="inv_sel_clear")
-    assert not app.sidebar.button
+    assert not any(button.key in {"inv_sel_cmp", "inv_sel_clear", "inv_refresh"} for button in app.sidebar.button)
     app.button(key="inv_refresh").click().run(timeout=10)
     assert not app.exception and refreshes == ["open"]
 
