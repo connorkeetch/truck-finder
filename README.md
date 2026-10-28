@@ -1,6 +1,6 @@
 # MotorSift
 
-**0.2.0 beta 1 — unreleased.** See the [changelog](CHANGELOG.md) and [release checks](docs/PUBLIC_RELEASE.md).
+**[0.2.0 beta 1](https://github.com/connorkeetch/truck-finder/releases/tag/v0.2.0b1) — October 28, 2026.** See the [changelog](CHANGELOG.md) and [release checks](docs/PUBLIC_RELEASE.md).
 
 A local vehicle-shopping workspace for **cars, SUVs, vans, and pickups** across makes and models covered by
 your automotive listing provider. Save the
@@ -22,8 +22,10 @@ retail sites are covered through listings supplied by those APIs or information 
 
 ## Start the app
 
-The current development environment uses **Python 3.12 on Windows**. macOS/Linux launchers are included;
-fresh-install and platform checks are listed in [Public release preparation](docs/PUBLIC_RELEASE.md).
+**Python 3.12 or newer is required; Python 3.12 is the tested version.** Startup and the main shopping flow
+were verified from a clean source folder and new virtual environment on Windows. See
+[Release checks](docs/PUBLIC_RELEASE.md) for the exact scope; macOS/Linux launchers, physical-phone use, and
+the deployed revision remain unverified.
 
 1. Install Python 3.12. On Windows, enable **Add python.exe to PATH**.
 2. Run `run.bat` on Windows, or `chmod +x run.sh && ./run.sh` on macOS/Linux.

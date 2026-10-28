@@ -135,6 +135,33 @@ def test_csv_cannot_claim_verified_tonneau():
     assert tonneau == "yes"
 
 
+@pytest.mark.parametrize("text,expected", [
+    ("not powered", "no"), ("not a powered tonneau", "no"), ("non-powered tonneau", "no"),
+    ("nonpowered", "no"), ("unpowered", "no"), ("no powered tonneau", "no"),
+    ("not electric", "no"), ("no electric tonneau", "no"),
+    ("without powered tonneau", "no"), ("manual", "no"), ("manual tonneau cover", "no"),
+    ("soft roll-up tonneau", "no"), ("soft cover", "no"), ("has a manual tonneau", "no"),
+    ("no cover", "no"), ("powered", "yes"), ("powered cover", "yes"),
+    ("Powered tonneau with manual release", "yes"), ("Powered tonneau not working", "yes"), ("yes", "yes"),
+    ("unknown", "unknown"), ("has a tonneau cover", "unknown"), ("not listed", "unknown"),
+])
+def test_explicit_imported_tonneau_text_respects_powered_status(text, expected):
+    item = manual.listing_from_fields({"tonneau": text, "description": "Advertised powered tonneau cover."})
+    claim = next(claim for claim in item.attributes if claim.field == "tonneau")
+    assert claim.value == expected
+    assert claim.confidence == "medium" and claim.method == "Entered by user from listing"
+    assert claim.evidence == text
+
+
+@pytest.mark.parametrize("legacy,expected", [("listed_unverified", "yes"), ("confirmed_operational", "yes"),
+                                            ("confirmed_absent", "no")])
+def test_legacy_csv_tonneau_values_remain_unverified_claims(legacy, expected):
+    item = manual.parse_csv(f"tonneau\n{legacy}\n")[0]
+    claim = next(claim for claim in item.attributes if claim.field == "tonneau")
+    assert claim.value == expected and claim.confidence == "medium"
+    assert claim.method == "Imported (csv)" and claim.evidence == legacy
+
+
 def test_json_import():
     data = json.dumps({"listings": [{"url": "https://www.carvana.com/vehicle/3456789", "price": "$57,500",
                                      "mileage": "20,100", "description": "Quad-Motor, Max Pack"}]})

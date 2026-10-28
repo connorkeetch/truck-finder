@@ -4,8 +4,9 @@ Get MotorSift running and see it work in about five minutes. You don't need an A
 
 ## 1. Install and start
 
-You need **Python 3.12** (3.10+ starts, but 3.12 is what CI tests). On Windows, tick **Add python.exe to PATH**
-during install.
+You need **Python 3.12 or newer**; Python 3.12 is the tested version. The launcher also checks an existing
+`.venv` and asks you to recreate it if its Python is older than 3.12. On Windows, tick **Add python.exe to PATH**
+during install. See [Release checks](PUBLIC_RELEASE.md) for the tested platform scope.
 
 ```bash
 git clone https://github.com/connorkeetch/truck-finder.git

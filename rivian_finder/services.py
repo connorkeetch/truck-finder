@@ -155,6 +155,8 @@ def purge_demo(conn: sqlite3.Connection) -> int:
         conn.execute(f"DELETE FROM vehicle_attributes WHERE vehicle_id IN ({marks})", ids)  # noqa: S608
         conn.execute(f"DELETE FROM user_overrides WHERE vehicle_id IN ({marks})", ids)  # noqa: S608
         conn.execute(f"DELETE FROM watchlist WHERE vehicle_id IN ({marks})", ids)  # noqa: S608
+        conn.execute(f"DELETE FROM checklist WHERE vehicle_id IN ({marks})", ids)  # noqa: S608
+        conn.execute(f"DELETE FROM contacts WHERE vehicle_id IN ({marks})", ids)  # noqa: S608
         conn.execute(f"DELETE FROM match_candidates WHERE vehicle_id IN ({marks}) OR candidate_vehicle_id IN ({marks})", ids + ids)  # noqa: S608
         conn.execute(f"UPDATE vehicles SET merged_into_id=NULL WHERE merged_into_id IN ({marks})", ids)  # noqa: S608
         conn.execute(f"DELETE FROM vehicles WHERE id IN ({marks})", ids)  # noqa: S608

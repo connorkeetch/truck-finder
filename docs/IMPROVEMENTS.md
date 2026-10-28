@@ -11,34 +11,25 @@ Good first tasks are marked 🟢.
 | # | What | Why | Suggested fix |
 |---|---|---|---|
 | R2 | Done: synthetic screenshots in the README | Inventory, vehicle details, and phone layout are shown from an isolated demo workspace | Keep `docs/images/` screenshots current when the UI changes |
-| R3 | Turn on GitHub **private vulnerability reporting** | [`SECURITY.md`](../SECURITY.md) tells people to use it | Repository **Settings → Code security** |
-| R4 | 🟢 Launcher accepts untested Python versions | Docs recommend 3.12. `launcher.py` accepts 3.10+, but CI tests only 3.12. | Either require 3.12 in `launcher.py`, or verify and document the broader support matrix |
+| R3 | Done: GitHub **private vulnerability reporting** enabled | Confirmed October 28, 2026, matching [`SECURITY.md`](../SECURITY.md) | Keep the reporting instructions current |
+| R4 | Done: enforce the Python minimum | `launcher.py` requires 3.12+ for the host interpreter and an existing `.venv`; only 3.12 is tested | Verify additional versions before expanding the tested support matrix |
 | R5 | 🟢 CI doesn't test macOS | `run.sh` and `scripts/create_mac_launcher.sh` are shipped for macOS | Add `macos-latest` to `.github/workflows/tests.yml` |
-| R6 | Prepare the first versioned beta release | `__version__ = "0.2.0b1"` and an unreleased [changelog](../CHANGELOG.md) are present; a published release has not been verified | Complete release checks, then create the matching tag and release notes |
+| R6 | Beta version and release docs prepared | `__version__ = "0.2.0b1"` matches the [v0.2.0b1 prerelease](https://github.com/connorkeetch/truck-finder/releases/tag/v0.2.0b1) and dated [changelog](../CHANGELOG.md) | Record exact validation scope in [Release checks](PUBLIC_RELEASE.md) |
 | R7 | 🟢 No `CODE_OF_CONDUCT.md` | GitHub's community checklist expects one | Add the Contributor Covenant |
 
 ## Bugs
 
-### B1. Negated tonneau text is read as "yes" (verified)
+### B1. Fixed: negated powered-tonneau descriptions
 
-`importers/manual.py` → `_tonneau_from_text()`. CSV/JSON/manual values like `not powered` or
-`non-powered soft cover` become **yes**, because the check looks for "power" after only a few negations.
-`manual tonneau` becomes **unknown**, although the project treats a manual or soft cover as **no**.
+`importers/manual.py` → `_tonneau_from_text()` handles `not powered`, `non-powered soft cover`, and manual
+covers before positive powered-cover claims. Regression tests cover these descriptions and preserve legacy
+structured values such as `listed_unverified`.
 
-| Input | Today | Expected |
-|---|---|---|
-| `not powered` | yes | no |
-| `non-powered soft cover` | yes | no |
-| `manual tonneau` | unknown | no |
+### B2. 🟢 Sample CSV could use current fields and broader examples
 
-Fix: check negations (`not`, `non-`, `no `, `without`, `manual`, `soft`) before positives, and add a
-parametrized test.
-
-### B2. 🟢 Sample CSV uses a retired tonneau value
-
-`examples/sample_listings.csv` row 1 has `tonneau=listed_unverified`. It only imports as "yes" because of the
-loose matching in B1. Change it to `yes`. While you're there, add a non-Rivian row and the newer columns
-(`epa_range`, `tow_capacity_lbs`, `wheels`).
+`examples/sample_listings.csv` row 1 uses `tonneau=listed_unverified`, a supported legacy alias for `yes`.
+Modernize the example to `yes`, add a non-Rivian row, and show newer columns (`epa_range`,
+`tow_capacity_lbs`, `wheels`). This is sample cleanup, not a dependency on B1's former parsing bug.
 
 ### B3. `RIVIAN_FINDER_PORT` in `.env` is ignored by the launcher
 
@@ -50,7 +41,7 @@ from the running server. The configuration/troubleshooting guides now explain th
 Fix: have `launcher.py` parse all `RIVIAN_FINDER_*` keys from `.env` (it already has the parsing loop in
 `data_dir()`).
 
-### B4. JSON export omission — fixed in the 0.2.0 beta preparation
+### B4. JSON export omission — fixed in 0.2.0 beta 1
 
 `backup.py` → `EXPORT_TABLES` now includes checklist, contacts, API usage, recalls, link checks, and email-inbox
 records. Regression coverage checks that application tables are exported and that the added records survive

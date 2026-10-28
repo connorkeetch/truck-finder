@@ -63,18 +63,25 @@ def say(msg: str) -> None:
 
 
 def ensure_env() -> None:
-    if sys.version_info < (3, 10):
-        sys.exit("Python 3.10 or newer is required. Install it from https://www.python.org/downloads/")
-    if not venv_python().exists():
+    if sys.version_info < (3, 12):
+        sys.exit("Python 3.12 or newer is required. Install it from https://www.python.org/downloads/")
+    python = venv_python()
+    if not python.exists():
         say(f"Creating virtual environment for {platform.system()} ...")
         venv.create(VENV, with_pip=True)
+    else:
+        version = subprocess.check_output([str(python), "-c", "import sys; print(f'{sys.version_info.major}.{sys.version_info.minor}')"],
+                                          text=True).strip()
+        if tuple(int(part) for part in version.split(".")) < (3, 12):
+            sys.exit(f"The existing .venv uses Python {version}; Python 3.12 or newer is required. "
+                     "Recreate .venv with a supported Python and run again.")
     stamp = VENV / ".requirements.sha1"
     digest = hashlib.sha1(REQS.read_bytes()).hexdigest()
     if not stamp.exists() or stamp.read_text().strip() != digest:
         say("Installing dependencies (first run takes a minute or two) ...")
-        subprocess.check_call([str(venv_python()), "-m", "pip", "install", "--disable-pip-version-check", "-q",
+        subprocess.check_call([str(python), "-m", "pip", "install", "--disable-pip-version-check", "-q",
                                "--upgrade", "pip"])
-        subprocess.check_call([str(venv_python()), "-m", "pip", "install", "--disable-pip-version-check", "-q",
+        subprocess.check_call([str(python), "-m", "pip", "install", "--disable-pip-version-check", "-q",
                                "-r", str(REQS)])
         stamp.write_text(digest)
 

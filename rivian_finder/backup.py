@@ -6,6 +6,7 @@ import shutil
 import sqlite3
 from datetime import datetime
 from pathlib import Path
+from tempfile import NamedTemporaryFile
 
 from . import config
 
@@ -16,17 +17,32 @@ EXPORT_TABLES = ["sources", "runs", "source_runs", "vehicles", "listings", "obse
                  "email_inbox"]
 
 
-def backup_db(conn: sqlite3.Connection, directory: Path | None = None, label: str = "manual") -> Path:
+def backup_db(conn: sqlite3.Connection, directory: Path | None = None, label: str = "manual",
+              *, preserve: Path | None = None) -> Path:
     """Consistent online copy via SQLite's backup API."""
     directory = directory or config.BACKUP_DIR
     directory.mkdir(parents=True, exist_ok=True)
-    path = directory / f"rivian_finder_{datetime.now():%Y%m%d_%H%M%S}_{label}.db"
-    dest = sqlite3.connect(path)
+    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    collision = 0
+    while True:
+        # ~ sorts repeated backups after legacy whole-second filenames.
+        suffix = f"~{collision:06d}" if collision else ""
+        path = directory / f"rivian_finder_{stamp}{suffix}_{label}.db"
+        try:
+            path.touch(exist_ok=False)
+            break
+        except FileExistsError:
+            collision += 1
     try:
-        conn.backup(dest)
-    finally:
-        dest.close()
-    prune(directory)
+        dest = sqlite3.connect(path)
+        try:
+            conn.backup(dest)
+        finally:
+            dest.close()
+    except Exception:
+        path.unlink(missing_ok=True)
+        raise
+    prune(directory, preserve=(path,) + ((preserve,) if preserve is not None else ()))
     return path
 
 
@@ -39,9 +55,11 @@ def daily_backup(conn: sqlite3.Connection, directory: Path | None = None) -> Pat
     return backup_db(conn, directory, "auto")
 
 
-def prune(directory: Path, keep: int = KEEP_BACKUPS) -> None:
+def prune(directory: Path, keep: int = KEEP_BACKUPS, *, preserve: tuple[Path, ...] = ()) -> None:
     files = sorted(directory.glob("rivian_finder_*.db"))
-    for old in files[:-keep]:
+    protected = {path.resolve() for path in preserve}
+    candidates = [path for path in files if path.resolve() not in protected]
+    for old in candidates[:max(0, len(files) - keep)]:
         old.unlink(missing_ok=True)
 
 
@@ -51,7 +69,7 @@ def list_backups(directory: Path | None = None) -> list[Path]:
 
 
 def restore_db(backup_path: Path, db_path: Path | None = None) -> Path:
-    """Replace the live database with a backup. The current database is backed up first."""
+    """Restore with other database connections closed; save the current database first."""
     db_path = db_path or config.DB_PATH
     check = sqlite3.connect(backup_path)
     try:
@@ -59,15 +77,21 @@ def restore_db(backup_path: Path, db_path: Path | None = None) -> Path:
             raise ValueError("that file is not a MotorSift database")
     finally:
         check.close()
-    if db_path.exists():
-        live = sqlite3.connect(db_path)
-        try:
-            backup_db(live, db_path.parent / "backups", label="before_restore")
-        finally:
-            live.close()
-    for suffix in ("-wal", "-shm"):
-        Path(str(db_path) + suffix).unlink(missing_ok=True)
-    shutil.copyfile(backup_path, db_path)
+    with NamedTemporaryFile(dir=db_path.parent, prefix=".restore-", suffix=".db", delete=False) as temporary:
+        staged = Path(temporary.name)
+    try:
+        shutil.copyfile(backup_path, staged)
+        if db_path.exists():
+            live = sqlite3.connect(db_path)
+            try:
+                backup_db(live, db_path.parent / "backups", label="before_restore", preserve=backup_path)
+            finally:
+                live.close()
+        for suffix in ("-wal", "-shm"):
+            Path(str(db_path) + suffix).unlink(missing_ok=True)
+        staged.replace(db_path)
+    finally:
+        staged.unlink(missing_ok=True)
     return db_path
 
 

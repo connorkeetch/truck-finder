@@ -4,9 +4,10 @@ from __future__ import annotations
 import csv
 import io
 import json
+import re
 
-from ..config import TONNEAU_STATUSES
-from ..extract import (canonical_url, extract_attributes, identify_site, normalize_state, parse_int, parse_location,
+from ..config import OLD_TONNEAU, TONNEAU_STATUSES
+from ..extract import (canonical_url, classify_tonneau, extract_attributes, identify_site, normalize_state, parse_int, parse_location,
                        parse_miles, parse_price, parse_truck_identity, parse_year, structured_truck_specs)
 from ..models import AttributeClaim, NormalizedListing
 from ..vin import clean_vin, find_vins
@@ -86,12 +87,20 @@ def listing_from_fields(fields: dict, import_method: str = "manual", entered_by_
 
 
 def _tonneau_from_text(val: str) -> str:
-    v = val.lower()
-    if any(w in v for w in ("absent", "none", "no ", "without")) or v == "no":
+    v = val.strip().lower()
+    if v in OLD_TONNEAU:
+        return OLD_TONNEAU[v]
+    if v in TONNEAU_STATUSES:
+        return v
+    if v in ("absent", "none", "without"):
         return "no"
-    if any(w in v for w in ("yes", "power", "listed", "has")):
+    if v in ("listed", "has"):
         return "yes"
-    return "unknown"
+    v = re.sub(r"\b(?:(?:no|not|without|w/o)\s+(?:(?:a|the)\s+)?|non[\s-]?|un)"
+               r"(?:power(?:ed)?|electric|motori[sz]ed|automatic|retractable)\b", "no powered", v)
+    if "tonneau" not in v:
+        v = re.sub(r"\bcover\b", "tonneau", v)
+    return classify_tonneau(v if "tonneau" in v else v + " tonneau", structured=True)[0]
 
 
 def parse_csv(data: bytes | str) -> list[NormalizedListing]:
