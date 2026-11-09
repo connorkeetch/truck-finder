@@ -104,6 +104,14 @@ def test_hide_as_sold_marks_listings_removed(conn):
     assert conn.execute("SELECT status FROM listings WHERE vehicle_id=?", (v1,)).fetchone()[0] == "removed"
 
 
+def test_hide_as_dead_link_marks_listings_removed(conn):
+    _two_trucks(conn)
+    v1 = conn.execute("SELECT id FROM vehicles WHERE vin=?", (vin(1),)).fetchone()[0]
+    hiding.hide_vehicle(conn, v1, "dead_link")
+    assert conn.execute("SELECT status FROM listings WHERE vehicle_id=?", (v1,)).fetchone()[0] == "removed"
+    assert conn.execute("SELECT hidden_reason FROM vehicles WHERE id=?", (v1,)).fetchone()[0] == "dead_link"
+
+
 def test_hidden_trucks_excluded_from_run_counts(conn):
     a = _two_trucks(conn)
     v1 = conn.execute("SELECT id FROM vehicles WHERE vin=?", (vin(1),)).fetchone()[0]

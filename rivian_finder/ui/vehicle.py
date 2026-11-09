@@ -7,7 +7,7 @@ import altair as alt
 import pandas as pd
 import streamlit as st
 
-from .. import attributes, checklist, compare, dedup, finance, hiding, links, photos, pipeline, queries, recalls, services, shipping
+from .. import attributes, compare, dedup, finance, hiding, links, photos, pipeline, queries, recalls, services, shipping
 from ..geo import distance_from_zip
 from ..config import ACCIDENT_STATUSES, BATTERIES, GENERATIONS, MOTORS, TITLE_STATUSES, TONNEAU_STATUSES
 from ..extract import RIVIAN_COLORS
@@ -95,7 +95,7 @@ def favorite_and_hide(c, row, vid: int, where) -> None:
         return
     with f2.popover("🚫 Not interested…", width="stretch"):
         st.caption("Hides this vehicle everywhere (including if it's relisted on another site). 'Title issues' also "
-                   "records the title as branded; 'Sold / dead link' marks its listings removed.")
+                   "records the title as branded; 'Sold' and 'Dead link' mark its listings removed.")
         reason = st.selectbox("Reason", list(hiding.HIDE_REASONS), format_func=hiding.reason_label,
                               key=f"hide_reason_{vid}")
         note = st.text_input("Note (optional)", key=f"hide_note_{vid}",
@@ -169,9 +169,9 @@ def render_truck(c, s, inv, vid: int) -> None:
 
     where_sold(c, row, vid)
 
-    (t_overview, t_verify, t_prices, t_listings, t_history, t_finance, t_checklist, t_identity,
+    (t_overview, t_verify, t_prices, t_listings, t_history, t_finance, t_identity,
      t_log) = st.tabs(["Overview", "Verify equipment", "Price history", "Listings & sources", "History & recalls",
-                       "Financing", "Notes & checklist", "Photo & identity", "Change log"])
+                       "Financing", "Photo & identity", "Change log"])
 
     # ---------------------------------------------------------- overview
     with t_overview:
@@ -196,6 +196,7 @@ def render_truck(c, s, inv, vid: int) -> None:
         st.markdown(f"**Warranty remaining:** {row['warranty']}"
                     + (f"  \n<small>Based on {row['warranty_basis']}</small>" if row["warranty_basis"] else ""),
                     unsafe_allow_html=True)
+        notes_box(c, vid, vehicle["notes"])
         if row["epa_basis"]:
             st.markdown(f"**EPA range:** {row['range_text']}  \n<small>{row['epa_basis']}</small>",
                         unsafe_allow_html=True)
@@ -373,11 +374,7 @@ def render_truck(c, s, inv, vid: int) -> None:
             st.caption("Trade-in scenarios reduce the taxable price only if 'Dealer trade-in reduces taxable price' is on; "
                        "the separate cash sale does not by default. Edit assumptions in Settings → Loan assumptions.")
 
-    with t_checklist:
-        notes_box(c, vid, vehicle["notes"])
-        checklist_tab(c, vid, row)
-
-    # ---------------------------------------------------------- notes & identity
+    # ---------------------------------------------------------- photo & identity
     with t_identity:
         photo_manager(c, vid, row)
         if not vehicle["vin"]:
@@ -638,57 +635,6 @@ def photo_form(c, vid: int, row, key: str = "top") -> None:
             photos.path_for(vid, "m").unlink(missing_ok=True)
             photos.cache_missing(c, limit=5)
             st.rerun()
-
-
-def checklist_tab(c, vid: int, row) -> None:
-    st.subheader("Pre-purchase checklist")
-    st.caption("Work through these before you buy. OK on tonneau/title/accidents/config records verified values; "
-               "Problem on title or accidents records a branded title / reported accident. Mark N/A for equipment or checks that do not apply.")
-    state = checklist.get(c, vid)
-    keys = list(checklist.STATUSES)
-    with st.form(f"chk_{vid}"):
-        answers = {}
-        for key, label, hint in checklist.items_for(row):
-            a, b, n = st.columns([3.2, 1.2, 3])
-            a.markdown(f"**{label}**" + (f"  \n<small>{hint}</small>" if hint else ""), unsafe_allow_html=True)
-            cur = state[key]
-            status = b.selectbox("Status", keys, index=keys.index(cur["status"]), format_func=checklist.STATUSES.get,
-                                 key=f"chk_{vid}_{key}", label_visibility="collapsed")
-            note = n.text_input("Note", cur["note"], key=f"chkn_{vid}_{key}", label_visibility="collapsed",
-                                placeholder="note")
-            answers[key] = (status, note.strip())
-        if st.form_submit_button("Save checklist", type="primary"):
-            fed = checklist.save(c, vid, answers)
-            msg = "Checklist saved." + (f" Verified: {', '.join(fed)}." if fed else "")
-            common.flash(msg)
-            if answers["title"][0] == "problem" and not row["hidden"]:
-                common.flash("Title problem recorded. To drop this vehicle: 🚫 Not interested → Branded title.", "info")
-            st.rerun()
-
-    st.subheader("Calls & messages")
-    with st.form(f"contact_{vid}", clear_on_submit=True):
-        a, b, d = st.columns([1, 2, 1.4])
-        channel = a.selectbox("How", checklist.CHANNELS)
-        person = b.text_input("With", placeholder=f"e.g. sales at {row['seller'] or 'the dealer'}")
-        follow = d.date_input("Follow up on", value=None, format="MM/DD/YYYY")
-        summary = st.text_area("What was said", height=90,
-                               placeholder="Price flexibility, tonneau works?, in-service date, title, fees, delivery…")
-        if st.form_submit_button("Add to log"):
-            if summary.strip() or person.strip():
-                checklist.add_contact(c, vid, channel, person, summary, follow)
-                st.rerun()
-    if row["seller_phone"]:
-        st.caption(f"Seller phone: **{row['seller_phone']}**")
-    for ct in checklist.contacts(c, vid):
-        with st.container(border=True):
-            x, y = st.columns([6, 1])
-            x.markdown(f"**{ct['channel'].title()}** {('with ' + ct['person']) if ct['person'] else ''} · "
-                       f"{common.local_time(ct['at'])}"
-                       + (f" · follow up **{ct['follow_up']}**" if ct["follow_up"] else "")
-                       + (f"  \n{ct['summary']}" if ct["summary"] else ""))
-            if y.button("Delete", key=f"ctdel_{ct['id']}"):
-                checklist.delete_contact(c, ct["id"])
-                st.rerun()
 
 
 SOURCES = "As listed"

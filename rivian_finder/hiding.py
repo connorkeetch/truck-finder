@@ -10,13 +10,14 @@ from .db import utcnow
 HIDE_REASONS: dict[str, tuple[str, tuple[str, str] | None]] = {
     "title_issues": ("Title issues", ("title_status", "branded")),
     "too_far": ("Too far", None),
-    "sold": ("Sold / dead link", None),
+    "sold": ("Sold", None),
+    "dead_link": ("Dead link", None),
     "other": ("Other", None),
 }
 
 
 def hide_vehicle(conn: sqlite3.Connection, vehicle_id: int, reason: str, note: str = "") -> None:
-    """Hide a truck. 'Title issues' also records the title as branded; 'Sold / dead link' marks its listings
+    """Hide a truck. 'Title issues' also records the title as branded; 'Sold' and 'Dead link' mark its listings
     removed."""
     if reason not in HIDE_REASONS:
         raise ValueError(f"unknown reason {reason}")
@@ -24,10 +25,11 @@ def hide_vehicle(conn: sqlite3.Connection, vehicle_id: int, reason: str, note: s
     if override:
         attributes.set_override(conn, vehicle_id, override[0], override[1],
                                 f"Recorded when marked not interested{': ' + note if note else ''}")
-    if reason == "sold":
+    if reason in ("sold", "dead_link"):
+        removal_note = "Marked sold by user" if reason == "sold" else "Dead link reported by user"
         for (lid,) in conn.execute("SELECT id FROM listings WHERE vehicle_id=? AND status != 'removed'",
                                    (vehicle_id,)).fetchall():
-            pipeline.mark_removed(conn, lid, "Marked sold by user")
+            pipeline.mark_removed(conn, lid, removal_note)
     with conn:
         conn.execute("UPDATE vehicles SET hidden_at=?, hidden_reason=?, hidden_note=? WHERE id=?",
                      (utcnow(), reason, note or None, vehicle_id))
