@@ -298,7 +298,7 @@ def test_sold_dead_link_survives_the_next_search(conn):
     pipeline.import_listings(conn, [nl], "manual_entry")
     vid = vid_for(conn, v)
     hiding.hide_vehicle(conn, vid, "sold", "page gone")
-    assert hiding.reason_label("sold") == "Sold / dead link"
+    assert hiding.reason_label("sold") == "Sold"
     pipeline.import_listings(conn, [listing(vin=v, url="https://eastbay.example/1")], "manual_entry")
     status, reason = conn.execute("SELECT status, status_reason FROM listings WHERE vehicle_id=?", (vid,)).fetchone()
     assert status == "removed" and reason.startswith("Marked")

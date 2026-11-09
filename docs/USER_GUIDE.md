@@ -87,8 +87,8 @@ Each favorite shows what needs proof, saved evidence, and a seller request you c
 evidence. Verified entries survive refreshes. Choosing **Unknown** clears your verification; historical source
 claims remain available. Verify numeric range/towing values in the vehicle's **Verify equipment** tab.
 
-**Open details → Notes & checklist** exposes the existing inspection checklist and seller-contact/follow-up
-tools. Seller requests are prepared locally for you to copy; the app does not send them. Updating requirements,
+A vehicle's details show a **📝 Notes** box under the warranty info on the **Overview** tab for anything you learn.
+Seller requests are prepared locally for you to copy; the app does not send them. Updating requirements,
 recording proof, and viewing favorites do not spend listing API calls.
 
 ## Where is it actually for sale?
@@ -116,12 +116,12 @@ that vehicle, so the next search can't put the wrong one back. Removing it bring
 ## Not interested (hiding vehicles)
 
 * **One vehicle**: click its name → **🚫 Not interested…** (top of the pop-up) → reason + optional note → *Hide this
-  vehicle*. Use **Sold / dead link** when the seller's page is gone.
+  vehicle*. Use **Dead link** when the seller's page is gone, or **Sold** when it's sold.
 * **Several**: tick **✓** on each → in the selection controls pick a reason → **🚫 Hide these**.
 * **Vehicle details**: **🚫 Not interested…** → reason + optional note (e.g. "Carfax: rebuilt title, 2024 flood").
-* Four reasons: **Title issues** (also records the title as branded), **Too far**, **Sold / dead link** (also marks
-  its listings removed — they stay removed even if a provider keeps returning the listing, as Auto.dev sometimes does
-  for days) and **Other**. Add a note for detail (e.g. "Carfax: rebuilt title, 2024 flood").
+* Five reasons: **Title issues** (also records the title as branded), **Too far**, **Sold** and **Dead link** (both
+  mark the vehicle's listings removed — they stay removed even if a provider keeps returning the listing, as Auto.dev
+  sometimes does for days) and **Other**. Add a note for detail (e.g. "Carfax: rebuilt title, 2024 flood").
 * Hidden vehicles disappear from the Dashboard, Inventory, run counts and the Excel *Current Inventory* sheet (they're
   listed on the *Not Interested* sheet instead). They stay hidden if the same VIN shows up on another site; the run
   summary just notes "N updates on vehicles you marked not interested".
@@ -191,9 +191,9 @@ ownership history. It needs at least two searches (or MarketCheck data) to show 
 
 ## Notes and favorites
 
-* **Notes**: open **Notes & checklist** in a vehicle's details for the **📝 Notes** box. Type anything (tonneau,
-  condition, what the seller said); it saves when you click outside the box or press Ctrl+Enter, and shows in the
-  Table view's *Notes* column too.
+* **Notes**: a vehicle's details show a **📝 Notes** box under the warranty info on the **Overview** tab. Type
+  anything (tonneau, condition, what the seller said); it saves when you click outside the box or press Ctrl+Enter,
+  and shows in the Table view's *Notes* column too.
 * **Favorites**: click the **☆** next to a card's title to make it a favorite (it fills in **★**); click again to
   remove it. *Favorites only* in the Inventory filters shows just those.
 
@@ -306,7 +306,7 @@ Providers sometimes keep listing a vehicle after the dealer's page is gone. **So
 It's polite by design: an honest User-Agent, robots.txt respected, requests to one site spaced a few seconds
 apart, and a site that blocks the first check is not retried or worked around. Only the result is stored. Sort by
 **Link problems first** to review them; once you've confirmed one is sold, hide it (✓ → **🚫 Hide these** →
-*Sold / dead link*). Also
+*Dead link*). Also
 available as `python -m rivian_finder.cli check-links`.
 
 CARFAX is always manual-only: the checker skips CARFAX addresses before requesting robots.txt or a page and
@@ -440,8 +440,6 @@ year + motor + battery (+ wheel size when known, all-terrain tires included). Un
 * **Listings & sources** — all URLs for this VIN, each with status, first/last seen, a per-listing
   **transport estimate**, and *Mark sold*.
 * **Financing** — every scenario × term × APR.
-* **Notes & checklist** — notes, the pre-purchase checklist, seller-contact history, and follow-up dates.
-  Notes save when you leave the field; checklist changes use **Save checklist**.
 * **Photo & identity** — photo management; add a VIN to a VIN-less vehicle (if another vehicle already has that
   VIN they merge); review possible duplicates.
 * **Change log** — every event for this vehicle.

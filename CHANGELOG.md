@@ -1,5 +1,10 @@
 # Changelog
 
+## [Unreleased]
+
+- Split the **Sold / dead link** hide reason into separate **Sold** and **Dead link** reasons; both still mark the vehicle's listings removed.
+- Move the **📝 Notes** box to the top of a vehicle's **Overview** (under the warranty info) and remove the per-listing pre-purchase checklist and seller-contact log from the vehicle details page.
+
 ## [0.2.0 beta 1](https://github.com/connorkeetch/truck-finder/releases/tag/v0.2.0b1) — October 28, 2026
 
 - Rename the public app and capture extension to **MotorSift**, a vehicle-shopping workspace for supported makes and models.

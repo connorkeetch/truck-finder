@@ -33,7 +33,7 @@ def test_details_page_includes_price_drop_patterns(conn, settings, monkeypatch):
     assert any(item.key == f"qv_isd_{vid}" for item in tabs["Verify equipment"].get("date_input"))
     assert any("Branded title · Accident reported" in item.value for item in app.warning)
     assert any("Sources disagree: Battery" in item.value for item in app.warning)
-    notes = next(item for item in tabs["Notes & checklist"].get("text_area") if item.label == "📝 Notes")
+    notes = next(item for item in tabs["Overview"].get("text_area") if item.label == "📝 Notes")
     notes.set_value("Called the seller; request repair records.").run(timeout=10)
     assert not app.exception
     assert conn.execute("SELECT notes FROM vehicles WHERE id=?", (vid,)).fetchone()[0] == "Called the seller; request repair records."
