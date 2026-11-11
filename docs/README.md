@@ -1,5 +1,9 @@
 # MotorSift docs
 
+> **Maintenance status — November 11, 2026:** This is an inactive personal project, shared for reference and experimentation. No ongoing feature work, releases, or support response times are planned. Issues and pull requests may go unanswered.
+
+Start with the [project README](../README.md) for the current maintenance status and common questions. Historical release checks retain their original dates.
+
 ## Using the app
 
 | I want to… | Read |

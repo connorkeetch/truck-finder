@@ -1,5 +1,7 @@
 # Contributing
 
+This project is not actively maintained. Contributions and reproducible reports are welcome, but review, merging, and replies are not guaranteed. Check the [README](README.md) for current status; consider a fork if you need to maintain your own changes.
+
 Thanks for helping. Bug reports, docs fixes, new import formats and model-specific knowledge are all welcome.
 
 The public name is **MotorSift**. The repository URL, `rivian_finder` package, environment variables, and data

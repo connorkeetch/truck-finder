@@ -6,7 +6,7 @@ Please don't open a public issue for a security problem. Use GitHub's private re
 repository's **Security** tab and choose **Report a vulnerability**. Include steps to reproduce and what an
 attacker could do.
 
-Only the latest code on `main` is supported. Fixes are not backported.
+This project is not actively maintained. There is no supported-version or security-update commitment, and fixes are not backported. Report privately as above, but do not rely on a response or scheduled fix.
 
 ## How MotorSift is meant to be run
 

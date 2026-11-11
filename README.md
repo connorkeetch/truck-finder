@@ -1,5 +1,7 @@
 # MotorSift
 
+> **Maintenance status — November 11, 2026:** This is an inactive personal project, shared for reference and experimentation. No ongoing feature work, releases, or support response times are planned. Issues and pull requests may go unanswered.
+
 **[0.2.0 beta 1](https://github.com/connorkeetch/truck-finder/releases/tag/v0.2.0b1) — October 28, 2026.** See the [changelog](CHANGELOG.md) and [release checks](docs/PUBLIC_RELEASE.md).
 
 A local vehicle-shopping workspace for **cars, SUVs, vans, and pickups** across makes and models covered by
@@ -143,6 +145,18 @@ Want to help? Read [Contributing](CONTRIBUTING.md) for setup and ground rules,
 [How MotorSift works](docs/ARCHITECTURE.md) for the code layout, and [Improvements](docs/IMPROVEMENTS.md)
 for known issues and good first tasks. Report security problems privately as described in
 [SECURITY.md](SECURITY.md).
+
+## Common questions
+
+**Is this only for Rivian trucks?** No. MotorSift supports general vehicle searches; Rivian R1T tools are model-specific extras. The repository and internal package keep their older names for compatibility.
+
+**Can I try it without paid services?** Yes. Demo data, manual entry, and imports work without listing-provider credentials. Automatic collection needs your own provider account and may incur charges under that provider's plan.
+
+**Where do I start, and what is actually tested?** Use the [Quickstart](docs/QUICKSTART.md), then the [User guide](docs/USER_GUIDE.md). The dated [release verification record](docs/PUBLIC_RELEASE.md) states what was tested; this documentation update is not a new application release or fresh end-to-end certification.
+
+**Will bugs be fixed or contributions reviewed?** There is no maintenance commitment. Search existing issues and [known limitations](docs/IMPROVEMENTS.md) first. Reports should include OS, Python version, steps to reproduce, and redacted logs. See [Contributing](CONTRIBUTING.md); a fork may be the practical route if you need a change.
+
+**Can I reuse it?** The code is [MIT licensed](LICENSE). Listing data, photos, and provider services have their own terms. See [Security](SECURITY.md) before sharing logs, exports, or a hosted instance.
 
 ## Documentation
 
